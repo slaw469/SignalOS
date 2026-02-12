@@ -1,3 +1,6 @@
 {
-  "crons": [{ "path": "/api/cron/briefing", "schedule": "0 9 * * *" }]
+  "crons": [
+    { "path": "/api/cron/briefing", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/tweet-scheduler", "schedule": "*/5 * * * *" }
+  ]
 }

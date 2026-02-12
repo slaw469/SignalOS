@@ -1365,6 +1365,223 @@ body {
   color: var(--sage-400);
 }
 
+/* ---------- Twitter Drawer ---------- */
+.twitter-drawer-collapsed {
+  transition: all 0.3s var(--ease-out);
+}
+
+.twitter-drawer-expanded {
+  transition: all 0.4s var(--ease-out);
+}
+
+.twitter-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 1.6rem;
+  border-bottom: 1px solid rgba(168, 162, 158, 0.12);
+}
+
+[data-theme="dark"] .twitter-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+.twitter-tab {
+  padding: 10px 16px;
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--ink-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.02em;
+}
+
+.twitter-tab:hover {
+  color: var(--ink-light);
+}
+
+.twitter-tab-active {
+  color: var(--ink);
+  background: var(--accent-soft);
+  border-bottom-color: var(--sage-400);
+  border-radius: 6px 6px 0 0;
+}
+
+[data-theme="dark"] .twitter-tab-active {
+  border-bottom-color: var(--sage-400);
+}
+
+.tweet-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--so-radius-sm);
+  transition: background 0.2s ease;
+}
+
+.tweet-item:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+[data-theme="dark"] .tweet-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tweet-status-badge {
+  font-size: 0.6rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+}
+
+.tweet-status-badge.draft {
+  background: rgba(168, 162, 158, 0.15);
+  color: var(--stone-500);
+}
+
+.tweet-status-badge.scheduled {
+  background: rgba(122, 153, 130, 0.15);
+  color: var(--sage-500);
+}
+
+.tweet-status-badge.posted {
+  background: rgba(196, 168, 130, 0.15);
+  color: #9a7e56;
+}
+
+.tweet-status-badge.failed {
+  color: #b45858;
+  background: rgba(180, 88, 88, 0.1);
+}
+
+.tweet-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid rgba(168, 162, 158, 0.2);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 500;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tweet-action-btn:hover {
+  border-color: var(--stone-400);
+  color: var(--ink-light);
+}
+
+.tweet-action-btn.post {
+  border-color: rgba(122, 153, 130, 0.3);
+  color: var(--sage-500);
+}
+
+.tweet-action-btn.post:hover {
+  background: rgba(122, 153, 130, 0.1);
+  border-color: var(--sage-400);
+}
+
+.tweet-action-btn.delete {
+  border-color: rgba(180, 88, 88, 0.3);
+  color: #b45858;
+}
+
+.tweet-action-btn.delete:hover {
+  background: rgba(180, 88, 88, 0.1);
+}
+
+.tweet-action-btn.active {
+  background: var(--accent-soft);
+  border-color: var(--sage-400);
+  color: var(--sage-500);
+}
+
+.tweet-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+[data-theme="dark"] .tweet-action-btn {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .tweet-action-btn:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--ink-light);
+}
+
+.char-counter {
+  font-size: 0.68rem;
+  font-family: var(--font-body);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.char-counter-warn {
+  color: var(--rose-300);
+}
+
+.char-counter-over {
+  color: #b45858;
+  font-weight: 600;
+}
+
+.tweet-compose-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tweet-compose-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tweet-compose-btn.draft {
+  background: rgba(168, 162, 158, 0.15);
+  color: var(--ink-light);
+}
+
+.tweet-compose-btn.draft:hover:not(:disabled) {
+  background: rgba(168, 162, 158, 0.25);
+}
+
+.tweet-compose-btn.schedule {
+  background: var(--sage-400);
+  color: white;
+}
+
+.tweet-compose-btn.schedule:hover:not(:disabled) {
+  background: var(--sage-500);
+}
+
+.tweet-compose-btn.ai {
+  background: rgba(196, 168, 130, 0.15);
+  color: #9a7e56;
+}
+
+.tweet-compose-btn.ai:hover:not(:disabled) {
+  background: rgba(196, 168, 130, 0.25);
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1100px) {
   .panels-grid { grid-template-columns: 1fr 1fr !important; }

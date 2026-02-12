@@ -7,6 +7,7 @@ import { AgendaPanel } from "@/components/agenda-panel";
 import { TodoPanel } from "@/components/todo-panel";
 import { ChatPanel } from "@/components/chat-panel";
 import { StatsBar } from "@/components/stats-bar";
+import { TwitterDrawer } from "@/components/twitter-drawer";
 import { Header } from "@/components/header";
 
 const FALLBACK_BRIEFING =
@@ -77,6 +78,8 @@ export default function Home() {
           <TodoPanel key={`todo-${refreshKey}`} />
           <ChatPanel onToolAction={triggerRefresh} />
         </div>
+
+        <TwitterDrawer key={`twitter-${refreshKey}`} />
 
         <StatsBar />
       </div>
