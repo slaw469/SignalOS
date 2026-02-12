@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { TodoItem } from "@/components/todo-item";
 import type { Todo } from "@/lib/types";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Leaf } from "lucide-react";
 
 const MOCK_TODOS: Todo[] = [
   { id: "1", title: "Finalize pitch deck for Friday's investor call", completed: false, tags: ["startup"], priority: "high" },
@@ -17,8 +17,41 @@ const MOCK_TODOS: Todo[] = [
 
 const FILTERS = ["All", "Startup", "School", "Upwork", "Personal"] as const;
 
+function ShimmerTodos() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "4px 0" }}>
+      {[90, 70, 82, 55].map((w, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 10px" }}>
+          <div
+            className="shimmer-line"
+            style={{ width: 18, height: 18, borderRadius: "50%", flexShrink: 0 }}
+          />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+            <div className="shimmer-line" style={{ width: `${w}%` }} />
+            <div style={{ display: "flex", gap: 6 }}>
+              <div className="shimmer-line" style={{ width: 48, height: 10 }} />
+              <div className="shimmer-line" style={{ width: 36, height: 10 }} />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyTodos() {
+  return (
+    <div className="empty-state">
+      <Leaf size={32} className="empty-state-icon" strokeWidth={1.5} />
+      <div className="empty-state-text">All clear &mdash; nothing on your plate</div>
+      <div className="empty-state-sub">A still mind is a powerful mind</div>
+    </div>
+  );
+}
+
 export function TodoPanel() {
   const [todos, setTodos] = useState<Todo[]>(MOCK_TODOS);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("All");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -33,12 +66,14 @@ export function TodoPanel() {
         const res = await fetch("/api/todos?include_completed=true");
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
+          if (Array.isArray(data)) {
             setTodos(data);
           }
         }
       } catch {
         // keep mock data
+      } finally {
+        setIsLoading(false);
       }
     }
     fetchTodos();
@@ -136,7 +171,9 @@ export function TodoPanel() {
     >
       <div className="panel-header">
         <span className="panel-title">Tasks</span>
-        <span className="panel-badge">{openCount} open</span>
+        <span className="panel-badge">
+          {isLoading ? "loading..." : `${openCount} open`}
+        </span>
       </div>
       <div className="panel-body">
         <div className="tag-filters" role="group" aria-label="Filter tasks by category">
@@ -152,16 +189,25 @@ export function TodoPanel() {
           ))}
         </div>
 
-        <ul className="flex flex-col gap-[2px] flex-1" style={{ listStyle: "none" }}>
-          {filtered.map((todo) => (
-            <TodoItem
-              key={todo.id}
-              todo={todo}
-              onToggle={handleToggle}
-              onDelete={handleDelete}
-            />
-          ))}
-        </ul>
+        {/* Loading State */}
+        {isLoading && <ShimmerTodos />}
+
+        {/* Empty State */}
+        {!isLoading && filtered.length === 0 && <EmptyTodos />}
+
+        {/* Todo List */}
+        {!isLoading && filtered.length > 0 && (
+          <ul className="flex flex-col gap-[2px] flex-1" style={{ listStyle: "none" }}>
+            {filtered.map((todo) => (
+              <TodoItem
+                key={todo.id}
+                todo={todo}
+                onToggle={handleToggle}
+                onDelete={handleDelete}
+              />
+            ))}
+          </ul>
+        )}
 
         {addError && (
           <div style={{ fontSize: "0.78rem", color: "#b45858", padding: "4px 10px", marginTop: 4 }}>{addError}</div>

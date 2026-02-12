@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { ZenBackground } from "@/components/zen-background";
 import { BriefingBanner } from "@/components/briefing-banner";
 import { AgendaPanel } from "@/components/agenda-panel";
@@ -9,12 +9,50 @@ import { ChatPanel } from "@/components/chat-panel";
 import { StatsBar } from "@/components/stats-bar";
 import { Header } from "@/components/header";
 
+const FALLBACK_BRIEFING =
+  "Welcome to your day. Take a breath, review your tasks, and move with intention.";
+
 export default function Home() {
   const [refreshKey, setRefreshKey] = useState(0);
+  const [briefing, setBriefing] = useState<string | null>(null);
+  const [isRefreshingBriefing, setIsRefreshingBriefing] = useState(false);
 
   const triggerRefresh = useCallback(() => {
     setRefreshKey((k) => k + 1);
   }, []);
+
+  const fetchBriefing = useCallback(async () => {
+    try {
+      const res = await fetch("/api/briefing");
+      if (res.ok) {
+        const data = await res.json();
+        setBriefing(data.briefing?.content ?? FALLBACK_BRIEFING);
+      } else {
+        setBriefing(FALLBACK_BRIEFING);
+      }
+    } catch {
+      setBriefing(FALLBACK_BRIEFING);
+    }
+  }, []);
+
+  const regenerateBriefing = useCallback(async () => {
+    setIsRefreshingBriefing(true);
+    try {
+      const res = await fetch("/api/briefing", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setBriefing(data.briefing?.content ?? FALLBACK_BRIEFING);
+      }
+    } catch {
+      // keep existing briefing on error
+    } finally {
+      setIsRefreshingBriefing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBriefing();
+  }, [fetchBriefing]);
 
   return (
     <>
@@ -27,7 +65,9 @@ export default function Home() {
         <Header />
 
         <BriefingBanner
-          content="Four things on your plate today. CS 301 at ten, startup standup at two, Upwork client call at four-thirty, and DoorDash from six. Your pitch deck draft is due Friday &mdash; steady momentum."
+          content={briefing}
+          onRefresh={regenerateBriefing}
+          isRefreshing={isRefreshingBriefing}
         />
 
         <div

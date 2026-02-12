@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Calendar } from "lucide-react";
 
 interface AgendaEvent {
   hour: number;
@@ -70,10 +71,44 @@ function getNowHour() {
   return new Date().getHours();
 }
 
+function ShimmerEvents() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 0" }}>
+      {[95, 75, 85, 60].map((w, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "8px 12px" }}>
+          <div
+            className="shimmer-line"
+            style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0 }}
+          />
+          <div
+            className="shimmer-line"
+            style={{ width: 42, height: 12, flexShrink: 0 }}
+          />
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+            <div className="shimmer-line" style={{ width: `${w}%` }} />
+            <div className="shimmer-line" style={{ width: `${w - 25}%`, height: 10 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyAgenda() {
+  return (
+    <div className="empty-state">
+      <Calendar size={32} className="empty-state-icon" strokeWidth={1.5} />
+      <div className="empty-state-text">No events scheduled today</div>
+      <div className="empty-state-sub">An open day is a gift &mdash; use it wisely</div>
+    </div>
+  );
+}
+
 export function AgendaPanel() {
   const [progress, setProgress] = useState(getDayProgress);
   const [nowHour, setNowHour] = useState(getNowHour);
   const [events, setEvents] = useState<AgendaEvent[]>(MOCK_EVENTS);
+  const [isLoading, setIsLoading] = useState(true);
   const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -98,14 +133,16 @@ export function AgendaPanel() {
             const eventsRes = await fetch("/api/calendar");
             if (eventsRes.ok) {
               const data = await eventsRes.json();
-              if (data.events && Array.isArray(data.events) && data.events.length > 0) {
-                setEvents(mapCalendarEvents(data.events));
+              if (data.events && Array.isArray(data.events)) {
+                setEvents(data.events.length > 0 ? mapCalendarEvents(data.events) : []);
               }
             }
           }
         }
       } catch {
         setCalendarConnected(false);
+      } finally {
+        setIsLoading(false);
       }
     }
     init();
@@ -144,6 +181,7 @@ export function AgendaPanel() {
   if (closestDiff > 1) closestHour = null;
 
   const sections: ("Morning" | "Afternoon" | "Evening")[] = ["Morning", "Afternoon", "Evening"];
+  const hasEvents = events.length > 0;
 
   return (
     <section
@@ -159,7 +197,9 @@ export function AgendaPanel() {
     >
       <div className="panel-header">
         <span className="panel-title">Agenda</span>
-        <span className="panel-badge">{events.length} events</span>
+        <span className="panel-badge">
+          {isLoading ? "loading..." : `${events.length} events`}
+        </span>
       </div>
       <div className="panel-body">
         {/* Day Progress Ring */}
@@ -202,44 +242,54 @@ export function AgendaPanel() {
           </button>
         )}
 
+        {/* Loading State */}
+        {isLoading && <ShimmerEvents />}
+
+        {/* Empty State */}
+        {!isLoading && !hasEvents && <EmptyAgenda />}
+
         {/* Event Sections */}
-        {sections.map((section) => {
-          const sectionEvents = events.filter((e) => e.section === section);
-          if (sectionEvents.length === 0) return null;
-          return (
-            <div key={section}>
-              <div className="agenda-section-label">{section}</div>
-              <ul className="flex flex-col gap-[2px] flex-1" style={{ listStyle: "none" }}>
-                {sectionEvents.map((ev) => {
-                  const isNow = ev.hour === closestHour;
-                  return (
-                    <li
-                      key={ev.hour + ev.title}
-                      className={`agenda-item${isNow ? " is-now" : ""}`}
-                    >
-                      <span className={`agenda-dot ${ev.dot}`} />
-                      <span className="agenda-time">{ev.time}</span>
-                      <div className="flex-1">
-                        <div style={{ fontSize: "0.86rem", color: "var(--ink)", marginBottom: 2, fontWeight: 400 }}>
-                          {ev.title}
-                        </div>
-                        <div style={{ fontSize: "0.72rem", color: "var(--ink-muted)" }}>
-                          {ev.meta}
-                        </div>
-                      </div>
-                      {isNow && (
-                        <div className="now-indicator">
-                          <span className="now-dot" />
-                          Now
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          );
-        })}
+        {!isLoading && hasEvents && (
+          <>
+            {sections.map((section) => {
+              const sectionEvents = events.filter((e) => e.section === section);
+              if (sectionEvents.length === 0) return null;
+              return (
+                <div key={section}>
+                  <div className="agenda-section-label">{section}</div>
+                  <ul className="flex flex-col gap-[2px] flex-1" style={{ listStyle: "none" }}>
+                    {sectionEvents.map((ev) => {
+                      const isNow = ev.hour === closestHour;
+                      return (
+                        <li
+                          key={ev.hour + ev.title}
+                          className={`agenda-item${isNow ? " is-now" : ""}`}
+                        >
+                          <span className={`agenda-dot ${ev.dot}`} />
+                          <span className="agenda-time">{ev.time}</span>
+                          <div className="flex-1">
+                            <div style={{ fontSize: "0.86rem", color: "var(--ink)", marginBottom: 2, fontWeight: 400 }}>
+                              {ev.title}
+                            </div>
+                            <div style={{ fontSize: "0.72rem", color: "var(--ink-muted)" }}>
+                              {ev.meta}
+                            </div>
+                          </div>
+                          {isNow && (
+                            <div className="now-indicator">
+                              <span className="now-dot" />
+                              Now
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })}
+          </>
+        )}
 
         <p className="breath-text">The day holds space for you</p>
       </div>
