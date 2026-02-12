@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Calendar } from "lucide-react";
 
 interface AgendaEvent {
+  id: string;
   hour: number;
   time: string;
   title: string;
@@ -28,17 +29,23 @@ function formatTime(dateStr: string): string {
   return m === 0 ? `${hour12}:00` : `${hour12}:${String(m).padStart(2, "0")}`;
 }
 
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, "").replace(/&[a-z]+;/gi, " ").trim();
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapCalendarEvents(events: any[]): AgendaEvent[] {
   return events.map((ev, i) => {
     const start = ev.start?.dateTime ?? ev.start?.date ?? "";
     const d = new Date(start);
     const hour = d.getHours();
+    const rawMeta = ev.location ?? ev.description ?? "";
     return {
+      id: ev.id ?? `${i}-${start}`,
       hour,
       time: formatTime(start),
       title: ev.summary ?? "Untitled",
-      meta: ev.location ?? ev.description ?? "",
+      meta: stripHtml(rawMeta).slice(0, 80),
       dot: DOT_COLORS[i % DOT_COLORS.length],
       section: getSection(hour),
     };
@@ -254,7 +261,7 @@ export function AgendaPanel() {
                       const isNow = ev.hour === closestHour;
                       return (
                         <li
-                          key={ev.hour + ev.title}
+                          key={ev.id}
                           className={`agenda-item${isNow ? " is-now" : ""}`}
                         >
                           <span className={`agenda-dot ${ev.dot}`} />
