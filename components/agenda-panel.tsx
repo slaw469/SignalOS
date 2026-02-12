@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Calendar } from "lucide-react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { Calendar, ChevronDown, ChevronUp } from "lucide-react";
 
 interface AgendaEvent {
   id: string;
@@ -103,6 +103,27 @@ function EmptyAgenda() {
   );
 }
 
+/** Find the index of the event closest to the current time (current or next upcoming). */
+function findNowIndex(events: AgendaEvent[], nowHour: number): number {
+  // First: find an event happening now (hour <= nowHour and closest)
+  let bestIdx = -1;
+  let bestDiff = Infinity;
+  for (let i = 0; i < events.length; i++) {
+    const diff = nowHour - events[i].hour;
+    if (diff >= 0 && diff < bestDiff) {
+      bestDiff = diff;
+      bestIdx = i;
+    }
+  }
+  if (bestIdx !== -1 && bestDiff <= 1) return bestIdx;
+  // Fallback: find the next upcoming event
+  for (let i = 0; i < events.length; i++) {
+    if (events[i].hour >= nowHour) return i;
+  }
+  // Fallback: last event
+  return Math.max(0, events.length - 1);
+}
+
 export function AgendaPanel() {
   const [progress, setProgress] = useState(getDayProgress);
   const [nowHour, setNowHour] = useState(getNowHour);
@@ -110,6 +131,10 @@ export function AgendaPanel() {
   const [isLoading, setIsLoading] = useState(true);
   const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const nowEventRef = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -147,6 +172,26 @@ export function AgendaPanel() {
     init();
   }, []);
 
+  // Auto-scroll to current event when expanded
+  const scrollToNow = useCallback(() => {
+    requestAnimationFrame(() => {
+      if (nowEventRef.current && scrollContainerRef.current) {
+        const container = scrollContainerRef.current;
+        const el = nowEventRef.current;
+        const containerRect = container.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        const scrollTop = container.scrollTop + (elRect.top - containerRect.top) - containerRect.height / 2 + elRect.height / 2;
+        container.scrollTo({ top: scrollTop, behavior: "smooth" });
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (expanded && events.length > 0) {
+      scrollToNow();
+    }
+  }, [expanded, events, scrollToNow]);
+
   const handleConnectGoogle = async () => {
     setIsConnecting(true);
     try {
@@ -182,13 +227,47 @@ export function AgendaPanel() {
   const sections: ("Morning" | "Afternoon" | "Evening")[] = ["Morning", "Afternoon", "Evening"];
   const hasEvents = events.length > 0;
 
+  // Compact view: show events near the current time (1 before, current, 1 after)
+  const nowIdx = hasEvents ? findNowIndex(events, nowHour) : 0;
+  const compactStart = Math.max(0, nowIdx - 1);
+  const compactEnd = Math.min(events.length, nowIdx + 2);
+  const compactEvents = events.slice(compactStart, compactEnd);
+  const hiddenCount = events.length - compactEvents.length;
+
+  function renderEventItem(ev: AgendaEvent, isNowEvent: boolean, ref?: React.Ref<HTMLLIElement>) {
+    return (
+      <li
+        key={ev.id}
+        ref={ref}
+        className={`agenda-item${isNowEvent ? " is-now" : ""}`}
+      >
+        <span className={`agenda-dot ${ev.dot}`} />
+        <span className="agenda-time">{ev.time}</span>
+        <div className="flex-1">
+          <div style={{ fontSize: "0.86rem", color: "var(--ink)", marginBottom: 2, fontWeight: 400 }}>
+            {ev.title}
+          </div>
+          <div style={{ fontSize: "0.72rem", color: "var(--ink-muted)" }}>
+            {ev.meta}
+          </div>
+        </div>
+        {isNowEvent && (
+          <div className="now-indicator">
+            <span className="now-dot" />
+            Now
+          </div>
+        )}
+      </li>
+    );
+  }
+
   return (
     <section
       className="glass flex flex-col"
       aria-label="Agenda"
       style={{
         overflow: "hidden",
-        minHeight: 420,
+        minHeight: expanded ? 420 : undefined,
         opacity: 0,
         transform: "translateY(20px)",
         animation: "fadeUp 0.7s var(--ease-out) 0.25s forwards",
@@ -200,7 +279,7 @@ export function AgendaPanel() {
           {isLoading ? "loading..." : `${events.length} events`}
         </span>
       </div>
-      <div className="panel-body">
+      <div className="panel-body" style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Day Progress Ring */}
         <div className="day-progress-wrapper">
           <div className="day-ring-container">
@@ -247,47 +326,110 @@ export function AgendaPanel() {
         {/* Empty State */}
         {!isLoading && !hasEvents && <EmptyAgenda />}
 
-        {/* Event Sections */}
-        {!isLoading && hasEvents && (
-          <>
-            {sections.map((section) => {
-              const sectionEvents = events.filter((e) => e.section === section);
-              if (sectionEvents.length === 0) return null;
-              return (
-                <div key={section}>
-                  <div className="agenda-section-label">{section}</div>
-                  <ul className="flex flex-col gap-[2px] flex-1" style={{ listStyle: "none" }}>
-                    {sectionEvents.map((ev) => {
-                      const isNow = ev.hour === closestHour;
-                      return (
-                        <li
-                          key={ev.id}
-                          className={`agenda-item${isNow ? " is-now" : ""}`}
-                        >
-                          <span className={`agenda-dot ${ev.dot}`} />
-                          <span className="agenda-time">{ev.time}</span>
-                          <div className="flex-1">
-                            <div style={{ fontSize: "0.86rem", color: "var(--ink)", marginBottom: 2, fontWeight: 400 }}>
-                              {ev.title}
-                            </div>
-                            <div style={{ fontSize: "0.72rem", color: "var(--ink-muted)" }}>
-                              {ev.meta}
-                            </div>
-                          </div>
-                          {isNow && (
-                            <div className="now-indicator">
-                              <span className="now-dot" />
-                              Now
-                            </div>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              );
-            })}
-          </>
+        {/* Compact View (collapsed) */}
+        {!isLoading && hasEvents && !expanded && (
+          <div>
+            <ul className="flex flex-col gap-[2px]" style={{ listStyle: "none" }}>
+              {compactEvents.map((ev) => {
+                const isNow = ev.hour === closestHour;
+                return renderEventItem(ev, isNow);
+              })}
+            </ul>
+            <button
+              onClick={() => setExpanded(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                width: "100%",
+                padding: "10px 0",
+                marginTop: 4,
+                background: "none",
+                border: "1px solid color-mix(in srgb, var(--ink-muted) 25%, transparent)",
+                borderRadius: 8,
+                color: "var(--ink-muted)",
+                fontSize: "0.76rem",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--ink-light)";
+                e.currentTarget.style.borderColor = "color-mix(in srgb, var(--ink-muted) 50%, transparent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--ink-muted)";
+                e.currentTarget.style.borderColor = "color-mix(in srgb, var(--ink-muted) 25%, transparent)";
+              }}
+            >
+              <ChevronDown size={14} />
+              {hiddenCount > 0 ? `Show all ${events.length} events` : "Expand schedule"}
+            </button>
+          </div>
+        )}
+
+        {/* Expanded View (scrollable, auto-centered on now) */}
+        {!isLoading && hasEvents && expanded && (
+          <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+            <div
+              ref={scrollContainerRef}
+              style={{
+                flex: 1,
+                overflowY: "auto",
+                maxHeight: 380,
+                scrollbarWidth: "thin",
+                scrollbarColor: "color-mix(in srgb, var(--ink-muted) 30%, transparent) transparent",
+              }}
+            >
+              {sections.map((section) => {
+                const sectionEvents = events.filter((e) => e.section === section);
+                if (sectionEvents.length === 0) return null;
+                return (
+                  <div key={section}>
+                    <div className="agenda-section-label">{section}</div>
+                    <ul className="flex flex-col gap-[2px] flex-1" style={{ listStyle: "none" }}>
+                      {sectionEvents.map((ev) => {
+                        const isNow = ev.hour === closestHour;
+                        const isNowRef = ev.id === events[nowIdx]?.id;
+                        return renderEventItem(ev, isNow, isNowRef ? nowEventRef : undefined);
+                      })}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setExpanded(false)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                width: "100%",
+                padding: "10px 0",
+                marginTop: 4,
+                flexShrink: 0,
+                background: "none",
+                border: "1px solid color-mix(in srgb, var(--ink-muted) 25%, transparent)",
+                borderRadius: 8,
+                color: "var(--ink-muted)",
+                fontSize: "0.76rem",
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--ink-light)";
+                e.currentTarget.style.borderColor = "color-mix(in srgb, var(--ink-muted) 50%, transparent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--ink-muted)";
+                e.currentTarget.style.borderColor = "color-mix(in srgb, var(--ink-muted) 25%, transparent)";
+              }}
+            >
+              <ChevronUp size={14} />
+              Collapse
+            </button>
+          </div>
         )}
 
         <p className="breath-text">The day holds space for you</p>
