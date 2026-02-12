@@ -4,8 +4,9 @@ interface BriefingBannerProps {
 
 export function BriefingBanner({ content }: BriefingBannerProps) {
   return (
-    <div
+    <section
       className="glass mb-8"
+      aria-label="Daily Briefing"
       style={{
         padding: "1.5rem 2rem",
         opacity: 0,
@@ -21,6 +22,6 @@ export function BriefingBanner({ content }: BriefingBannerProps) {
           Preparing your daily briefing...
         </p>
       )}
-    </div>
+    </section>
   );
 }

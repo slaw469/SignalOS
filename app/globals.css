@@ -1044,6 +1044,18 @@ body {
 .chat-send:active { transform: scale(0.96); }
 .chat-send svg { width: 16px; height: 16px; }
 
+/* ---------- Chat Error Messages ---------- */
+.chat-error {
+  background: rgba(196, 140, 80, 0.1) !important;
+  border-color: rgba(196, 140, 80, 0.25) !important;
+  color: #9a6c3b !important;
+}
+[data-theme="dark"] .chat-error {
+  background: rgba(196, 140, 80, 0.12) !important;
+  border-color: rgba(196, 140, 80, 0.2) !important;
+  color: #c9a06a !important;
+}
+
 /* ---------- Stats Bar ---------- */
 .stat-card { padding: 1.2rem 1.4rem; text-align: center; }
 

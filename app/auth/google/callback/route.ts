@@ -13,24 +13,36 @@ export async function GET(request: NextRequest) {
     const tokens = await getTokensFromCode(code);
 
     if (tokens.access_token) {
-      await supabase.from("settings").upsert(
+      const { error } = await supabase.from("settings").upsert(
         { key: "google_access_token", value: tokens.access_token, updated_at: new Date().toISOString() },
         { onConflict: "key" }
       );
+      if (error) {
+        console.error("Failed to store access token:", error);
+        return NextResponse.redirect(new URL("/?error=token_storage_failed", request.url));
+      }
     }
 
     if (tokens.refresh_token) {
-      await supabase.from("settings").upsert(
+      const { error } = await supabase.from("settings").upsert(
         { key: "google_refresh_token", value: tokens.refresh_token, updated_at: new Date().toISOString() },
         { onConflict: "key" }
       );
+      if (error) {
+        console.error("Failed to store refresh token:", error);
+        return NextResponse.redirect(new URL("/?error=token_storage_failed", request.url));
+      }
     }
 
     if (tokens.expiry_date) {
-      await supabase.from("settings").upsert(
+      const { error } = await supabase.from("settings").upsert(
         { key: "google_token_expiry", value: String(tokens.expiry_date), updated_at: new Date().toISOString() },
         { onConflict: "key" }
       );
+      if (error) {
+        console.error("Failed to store token expiry:", error);
+        return NextResponse.redirect(new URL("/?error=token_storage_failed", request.url));
+      }
     }
 
     return NextResponse.redirect(new URL("/", request.url));

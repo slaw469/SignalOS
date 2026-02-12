@@ -35,7 +35,7 @@ export default function RootLayout({
         <Script
           id="theme-setup"
           strategy="beforeInteractive"
-        >{`(function(){try{var s=localStorage.getItem('signalos-theme');var p=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=s||(p?'dark':'light');document.documentElement.setAttribute('data-theme',t)}catch(e){}})()`}</Script>
+        >{`(function(){try{var s=localStorage.getItem('signalos-theme');var p=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=s||(p?'dark':'light');document.documentElement.setAttribute('data-theme',t);if(t==='dark')document.documentElement.classList.add('dark')}catch(e){}})()`}</Script>
       </body>
     </html>
   );

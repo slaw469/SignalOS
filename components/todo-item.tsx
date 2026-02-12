@@ -1,16 +1,7 @@
-"use client";
-
 import { TagBadge } from "@/components/tag-badge";
 import { PriorityBadge } from "@/components/priority-badge";
 import { Trash2 } from "lucide-react";
-
-export interface Todo {
-  id: string;
-  title: string;
-  completed: boolean;
-  tags: string[];
-  priority: "high" | "medium" | "low";
-}
+import type { Todo } from "@/lib/types";
 
 interface TodoItemProps {
   todo: Todo;
@@ -26,6 +17,7 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
           type="checkbox"
           checked={todo.completed}
           onChange={() => onToggle(todo.id, !todo.completed)}
+          aria-label={`Mark "${todo.title}" as ${todo.completed ? "incomplete" : "complete"}`}
         />
         <span className="checkmark" />
       </label>
@@ -44,7 +36,7 @@ export function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
           e.stopPropagation();
           onDelete(todo.id);
         }}
-        aria-label="Delete task"
+        aria-label={`Delete task: ${todo.title}`}
       >
         <Trash2 size={14} />
       </button>

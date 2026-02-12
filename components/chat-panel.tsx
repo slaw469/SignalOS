@@ -3,12 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChatMessage } from "@/components/chat-message";
 import { Send } from "lucide-react";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-}
+import type { Message } from "@/lib/types";
 
 interface ChatPanelProps {
   onToolAction?: () => void;
@@ -90,7 +85,7 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
         const aiMsg: Message = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: data.response ?? "I couldn't process that right now.",
+          content: data.response || "I couldn't process that right now.",
         };
         setMessages((prev) => [...prev, aiMsg]);
 
@@ -103,6 +98,7 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
           id: (Date.now() + 1).toString(),
           role: "assistant",
           content: "Something went wrong. Please try again.",
+          isError: true,
         };
         setMessages((prev) => [...prev, aiMsg]);
       }
@@ -111,6 +107,7 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
         id: (Date.now() + 1).toString(),
         role: "assistant",
         content: "I'm having trouble connecting right now. Please try again.",
+        isError: true,
       };
       setMessages((prev) => [...prev, aiMsg]);
     } finally {
@@ -128,6 +125,7 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
   return (
     <section
       className="glass chat-panel flex flex-col"
+      aria-label="Chat with Claude"
       style={{
         overflow: "hidden",
         minHeight: 420,
@@ -141,12 +139,12 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
         <span className="panel-badge">{loaded ? "AI assistant" : "loading..."}</span>
       </div>
       <div className="panel-body">
-        <div className="chat-messages">
+        <div className="chat-messages" role="log" aria-live="polite">
           {messages.map((msg) => (
-            <ChatMessage key={msg.id} role={msg.role} content={msg.content} />
+            <ChatMessage key={msg.id} role={msg.role} content={msg.content} isError={msg.isError} />
           ))}
           {isTyping && (
-            <div className="typing-indicator visible">
+            <div className="typing-indicator visible" role="status" aria-label="Claude is typing">
               <span className="typing-dot" />
               <span className="typing-dot" />
               <span className="typing-dot" />
@@ -159,12 +157,13 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
             type="text"
             className="chat-input"
             placeholder="Ask Claude anything..."
+            aria-label="Type a message"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isTyping}
           />
-          <button className="chat-send" onClick={sendMessage} disabled={isTyping}>
+          <button className="chat-send" onClick={sendMessage} disabled={isTyping} aria-label="Send message">
             <Send size={16} />
           </button>
         </div>

@@ -1,5 +1,9 @@
 import { google, calendar_v3 } from "googleapis";
 
+if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
+  throw new Error('Missing Google OAuth environment variables (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI)');
+}
+
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
@@ -70,8 +74,8 @@ export async function createCalendarEvent(
       summary: eventDetails.title,
       description: eventDetails.description,
       location: eventDetails.location,
-      start: { dateTime: eventDetails.start_time },
-      end: { dateTime: eventDetails.end_time },
+      start: { dateTime: eventDetails.start_time, timeZone: 'America/New_York' },
+      end: { dateTime: eventDetails.end_time, timeZone: 'America/New_York' },
     },
   });
   return res.data;
@@ -89,10 +93,10 @@ export async function updateCalendarEvent(
 ): Promise<calendar_v3.Schema$Event> {
   const calendar = getCalendarClient(accessToken);
   const requestBody: calendar_v3.Schema$Event = {};
-  if (updates.title) requestBody.summary = updates.title;
-  if (updates.description) requestBody.description = updates.description;
-  if (updates.start_time) requestBody.start = { dateTime: updates.start_time };
-  if (updates.end_time) requestBody.end = { dateTime: updates.end_time };
+  if (updates.title !== undefined) requestBody.summary = updates.title;
+  if (updates.description !== undefined) requestBody.description = updates.description;
+  if (updates.start_time !== undefined) requestBody.start = { dateTime: updates.start_time, timeZone: 'America/New_York' };
+  if (updates.end_time !== undefined) requestBody.end = { dateTime: updates.end_time, timeZone: 'America/New_York' };
 
   const res = await calendar.events.patch({
     calendarId: "primary",

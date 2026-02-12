@@ -73,10 +73,14 @@ export async function DELETE(
 ) {
   const { id } = await params;
 
-  const { error } = await supabase.from("todos").delete().eq("id", id);
+  const { error, count } = await supabase.from("todos").delete({ count: "exact" }).eq("id", id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (count === 0) {
+    return NextResponse.json({ error: "Todo not found" }, { status: 404 });
   }
 
   return NextResponse.json({ success: true });

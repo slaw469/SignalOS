@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { TodoItem, type Todo } from "@/components/todo-item";
+import { TodoItem } from "@/components/todo-item";
+import type { Todo } from "@/lib/types";
 import { Plus, X } from "lucide-react";
 
 const MOCK_TODOS: Todo[] = [
@@ -24,6 +25,7 @@ export function TodoPanel() {
   const [newPriority, setNewPriority] = useState<"high" | "medium" | "low">("medium");
   const [newTag, setNewTag] = useState("personal");
   const [isAdding, setIsAdding] = useState(false);
+  const [addError, setAddError] = useState("");
 
   useEffect(() => {
     async function fetchTodos() {
@@ -53,10 +55,14 @@ export function TodoPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ completed }),
       });
-      if (res.ok) {
-        const updated = await res.json();
-        setTodos((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      if (!res.ok) {
+        setTodos((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, completed: !completed } : t))
+        );
+        return;
       }
+      const updated = await res.json();
+      setTodos((prev) => prev.map((t) => (t.id === id ? updated : t)));
     } catch {
       // Revert on error
       setTodos((prev) =>
@@ -95,9 +101,13 @@ export function TodoPanel() {
         setNewPriority("medium");
         setNewTag("personal");
         setShowAddForm(false);
+      } else {
+        setAddError("Failed to add task. Please try again.");
+        setTimeout(() => setAddError(""), 3000);
       }
     } catch {
-      // silently fail
+      setAddError("Failed to add task. Please try again.");
+      setTimeout(() => setAddError(""), 3000);
     } finally {
       setIsAdding(false);
     }
@@ -115,6 +125,7 @@ export function TodoPanel() {
   return (
     <section
       className="glass flex flex-col"
+      aria-label="Tasks"
       style={{
         overflow: "hidden",
         minHeight: 420,
@@ -128,12 +139,13 @@ export function TodoPanel() {
         <span className="panel-badge">{openCount} open</span>
       </div>
       <div className="panel-body">
-        <div className="tag-filters">
+        <div className="tag-filters" role="group" aria-label="Filter tasks by category">
           {FILTERS.map((f) => (
             <button
               key={f}
               className={`tag-pill${activeFilter === f ? " active" : ""}`}
               onClick={() => setActiveFilter(f)}
+              aria-pressed={activeFilter === f}
             >
               {f}
             </button>
@@ -151,6 +163,10 @@ export function TodoPanel() {
           ))}
         </ul>
 
+        {addError && (
+          <div style={{ fontSize: "0.78rem", color: "#b45858", padding: "4px 10px", marginTop: 4 }}>{addError}</div>
+        )}
+
         {showAddForm ? (
           <div className="add-task-form">
             <div className="add-task-form-row">
@@ -158,6 +174,7 @@ export function TodoPanel() {
                 type="text"
                 className="add-task-input"
                 placeholder="What needs to be done?"
+                aria-label="New task title"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleAddTodo(); }}
@@ -167,6 +184,7 @@ export function TodoPanel() {
             <div className="add-task-form-row" style={{ gap: 8 }}>
               <select
                 className="add-task-select"
+                aria-label="Priority"
                 value={newPriority}
                 onChange={(e) => setNewPriority(e.target.value as "high" | "medium" | "low")}
               >
@@ -176,6 +194,7 @@ export function TodoPanel() {
               </select>
               <select
                 className="add-task-select"
+                aria-label="Category"
                 value={newTag}
                 onChange={(e) => setNewTag(e.target.value)}
               >
@@ -195,13 +214,14 @@ export function TodoPanel() {
               <button
                 className="add-task-cancel"
                 onClick={() => { setShowAddForm(false); setNewTitle(""); }}
+                aria-label="Cancel adding task"
               >
                 <X size={14} />
               </button>
             </div>
           </div>
         ) : (
-          <div className="add-task" onClick={() => setShowAddForm(true)}>+ Add a task</div>
+          <button className="add-task" onClick={() => setShowAddForm(true)}>+ Add a task</button>
         )}
       </div>
     </section>

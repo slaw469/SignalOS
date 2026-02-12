@@ -148,6 +148,7 @@ export function AgendaPanel() {
   return (
     <section
       className="glass flex flex-col"
+      aria-label="Agenda"
       style={{
         overflow: "hidden",
         minHeight: 420,

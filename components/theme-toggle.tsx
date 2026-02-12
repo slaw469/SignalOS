@@ -8,13 +8,21 @@ export function ThemeToggle() {
 
   useEffect(() => {
     const current = document.documentElement.getAttribute("data-theme");
-    if (current === "dark") setTheme("dark");
+    if (current === "dark") {
+      setTheme("dark");
+      document.documentElement.classList.add("dark");
+    }
   }, []);
 
   function toggle() {
     const next = theme === "dark" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("signalos-theme", next);
+    document.documentElement.classList.toggle("dark", next === "dark");
+    try {
+      localStorage.setItem("signalos-theme", next);
+    } catch {
+      // localStorage may be unavailable in Safari private browsing
+    }
     setTheme(next);
   }
 

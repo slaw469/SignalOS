@@ -9,17 +9,25 @@ import {
 } from "@/lib/google-calendar";
 
 async function getTokens() {
-  const { data: accessRow } = await supabase
+  const { data: accessRow, error: accessError } = await supabase
     .from("settings")
     .select("value")
     .eq("key", "google_access_token")
     .single();
 
-  const { data: refreshRow } = await supabase
+  if (accessError && accessError.code !== "PGRST116") {
+    throw new Error("Database error retrieving access token");
+  }
+
+  const { data: refreshRow, error: refreshError } = await supabase
     .from("settings")
     .select("value")
     .eq("key", "google_refresh_token")
     .single();
+
+  if (refreshError && refreshError.code !== "PGRST116") {
+    throw new Error("Database error retrieving refresh token");
+  }
 
   return {
     accessToken: accessRow?.value ?? null,
@@ -52,16 +60,22 @@ async function doRefresh(refreshToken: string): Promise<string | null> {
   try {
     const credentials = await refreshAccessToken(refreshToken);
     if (credentials.access_token) {
-      await supabase.from("settings").upsert(
+      const { error } = await supabase.from("settings").upsert(
         { key: "google_access_token", value: credentials.access_token, updated_at: new Date().toISOString() },
         { onConflict: "key" }
       );
+      if (error) {
+        console.warn("Failed to persist refreshed access token to DB:", error);
+      }
     }
     if (credentials.expiry_date) {
-      await supabase.from("settings").upsert(
+      const { error } = await supabase.from("settings").upsert(
         { key: "google_token_expiry", value: String(credentials.expiry_date), updated_at: new Date().toISOString() },
         { onConflict: "key" }
       );
+      if (error) {
+        console.warn("Failed to persist token expiry to DB:", error);
+      }
     }
     return credentials.access_token ?? null;
   } catch {
@@ -97,8 +111,13 @@ export async function GET(request: NextRequest) {
       if (refreshToken) {
         accessToken = await doRefresh(refreshToken);
         if (accessToken) {
-          const events = await getCalendarEvents(accessToken, timeMin, timeMax);
-          return NextResponse.json({ events });
+          try {
+            const events = await getCalendarEvents(accessToken, timeMin, timeMax);
+            return NextResponse.json({ events });
+          } catch (retryError) {
+            console.error("Calendar retry after refresh failed:", retryError);
+            return NextResponse.json({ error: "Failed to fetch events after token refresh" }, { status: 500 });
+          }
         }
       }
       return NextResponse.json({ error: "Token expired and refresh failed" }, { status: 401 });

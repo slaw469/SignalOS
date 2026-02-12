@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Tool, MessageParam, ContentBlock } from "@anthropic-ai/sdk/resources/messages";
+import type { CalendarEvent } from "@/lib/types";
 
 const client = new Anthropic();
 
@@ -174,15 +175,7 @@ export const tools: Tool[] = [
   },
 ];
 
-interface CalendarEvent {
-  id?: string;
-  summary?: string;
-  start?: { dateTime?: string; date?: string };
-  end?: { dateTime?: string; date?: string };
-  location?: string;
-}
-
-function formatTime(dateStr: string | undefined): string {
+function formatTime(dateStr: string | null | undefined): string {
   if (!dateStr) return "unknown time";
   return new Date(dateStr).toLocaleTimeString("en-US", {
     hour: "numeric",

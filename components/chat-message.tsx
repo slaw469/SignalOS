@@ -1,9 +1,10 @@
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
+  isError?: boolean;
 }
 
-export function ChatMessage({ role, content }: ChatMessageProps) {
+export function ChatMessage({ role, content, isError }: ChatMessageProps) {
   const isAI = role === "assistant";
 
   return (
@@ -11,7 +12,7 @@ export function ChatMessage({ role, content }: ChatMessageProps) {
       <div className={`chat-avatar ${isAI ? "ai-av" : "user-av"}`}>
         {isAI ? "AI" : "S"}
       </div>
-      <div className="chat-bubble">{content}</div>
+      <div className={`chat-bubble${isError ? " chat-error" : ""}`}>{content}</div>
     </div>
   );
 }

@@ -7,8 +7,9 @@ const stats = [
 
 export function StatsBar() {
   return (
-    <div
+    <section
       className="stats-grid grid grid-cols-4 gap-6"
+      aria-label="Statistics"
       style={{
         opacity: 0,
         animation: "fadeUp 0.7s var(--ease-out) 0.6s forwards",
@@ -21,6 +22,6 @@ export function StatsBar() {
           <div className="stat-change stat-up">{stat.change}</div>
         </div>
       ))}
-    </div>
+    </section>
   );
 }

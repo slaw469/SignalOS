@@ -15,11 +15,14 @@ interface ToolResult {
 // --- Token Helper ---
 
 async function getAccessToken(): Promise<string | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("settings")
     .select("value")
     .eq("key", "google_access_token")
     .single();
+  if (error && error.code !== "PGRST116") {
+    throw new Error("Database error retrieving access token");
+  }
   return data?.value ?? null;
 }
 
@@ -79,12 +82,13 @@ async function updateTodo(input: {
 }
 
 async function deleteTodo(input: { todo_id: string }): Promise<ToolResult> {
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("todos")
-    .delete()
+    .delete({ count: "exact" })
     .eq("id", input.todo_id);
 
   if (error) return { success: false, error: error.message };
+  if (count === 0) return { success: false, error: "Todo not found" };
   return { success: true, data: { deleted: input.todo_id } };
 }
 
@@ -196,10 +200,10 @@ async function updateCalendarEvent(input: {
 
   try {
     const updates: { title?: string; start_time?: string; end_time?: string; description?: string } = {};
-    if (input.title) updates.title = input.title;
-    if (input.start_time) updates.start_time = input.start_time;
-    if (input.end_time) updates.end_time = input.end_time;
-    if (input.description) updates.description = input.description;
+    if (input.title !== undefined) updates.title = input.title;
+    if (input.start_time !== undefined) updates.start_time = input.start_time;
+    if (input.end_time !== undefined) updates.end_time = input.end_time;
+    if (input.description !== undefined) updates.description = input.description;
 
     const event = await gcalUpdate(token, input.event_id, updates);
     return { success: true, data: event };

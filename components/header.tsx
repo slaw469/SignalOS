@@ -68,7 +68,7 @@ export function Header() {
           All systems calm
         </div>
         <ThemeToggle />
-        <div className="avatar">S</div>
+        <div className="avatar" aria-label="User avatar" role="img">S</div>
       </div>
     </header>
   );
