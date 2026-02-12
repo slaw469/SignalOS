@@ -73,6 +73,13 @@ async function handleSingleTweet(
     return NextResponse.json({ error: "Tweet not found" }, { status: 404 });
   }
 
+  if (tweet.status === "posted" || tweet.status === "posting") {
+    return NextResponse.json(
+      { error: `Tweet is already ${tweet.status}` },
+      { status: 409 }
+    );
+  }
+
   // Mark as posting
   await supabase
     .from("tweets")

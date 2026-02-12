@@ -248,6 +248,13 @@ async function draftTweet(input: {
   thread?: boolean;
   schedule_at?: string;
 }): Promise<ToolResult> {
+  if (!input.content || input.content.trim().length === 0) {
+    return { success: false, error: "Tweet content cannot be empty" };
+  }
+  if (input.content.length > 280) {
+    return { success: false, error: `Tweet content is ${input.content.length} characters. Max is 280.` };
+  }
+
   const status = input.schedule_at ? "scheduled" : "draft";
   const thread_id = input.thread ? crypto.randomUUID() : null;
 
@@ -271,6 +278,13 @@ async function addThreadTweet(input: {
   thread_id: string;
   content: string;
 }): Promise<ToolResult> {
+  if (!input.content || input.content.trim().length === 0) {
+    return { success: false, error: "Tweet content cannot be empty" };
+  }
+  if (input.content.length > 280) {
+    return { success: false, error: `Tweet content is ${input.content.length} characters. Max is 280.` };
+  }
+
   // Find the current max thread_order for this thread
   const { data: existing, error: fetchError } = await supabase
     .from("tweets")
@@ -328,6 +342,9 @@ async function postTweetNow(input: { tweet_id: string }): Promise<ToolResult> {
 
   if (fetchError) return { success: false, error: fetchError.message };
   if (!tweet) return { success: false, error: "Tweet not found" };
+  if (tweet.status === "posted" || tweet.status === "posting") {
+    return { success: false, error: `Tweet is already ${tweet.status}` };
+  }
 
   const client = await getAuthenticatedTwitterClient();
   if (!client) return { success: false, error: TWITTER_NOT_CONNECTED };

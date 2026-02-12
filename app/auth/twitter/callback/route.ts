@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL("/?error=missing_verifier", request.url));
     }
 
-    // Validate state to prevent CSRF
-    if (state && stateRow?.value && state !== stateRow.value) {
+    // Validate state to prevent CSRF (mandatory check)
+    if (!state || !stateRow?.value || state !== stateRow.value) {
       return NextResponse.redirect(new URL("/?error=invalid_state", request.url));
     }
 

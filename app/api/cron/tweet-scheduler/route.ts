@@ -59,6 +59,14 @@ export async function GET(request: NextRequest) {
   const summary = { processed: 0, posted: 0, failed: 0 };
 
   try {
+    // 0. Reset tweets stuck in "posting" status for more than 5 minutes
+    const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    await supabase
+      .from("tweets")
+      .update({ status: "failed", error: "Posting timed out", updated_at: new Date().toISOString() })
+      .eq("status", "posting")
+      .lt("updated_at", fiveMinAgo);
+
     // 1. Check rate limits for current month
     const currentMonth = getCurrentMonth();
     const { data: rateRow } = await supabase
@@ -174,7 +182,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 6. Post threads
-    for (const [threadId, tweets] of threadGroups) {
+    for (const [, tweets] of threadGroups) {
       const sorted = tweets.sort((a, b) => a.thread_order - b.thread_order);
       const tweetCount = sorted.length;
       summary.processed += tweetCount;

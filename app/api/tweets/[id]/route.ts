@@ -21,6 +21,7 @@ export async function PATCH(
     "status",
     "media_urls",
     "error",
+    "recurring_rule",
   ];
   const updates: Record<string, unknown> = {};
 
