@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HustleOS — Minimal / Zen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+/* ========== RESET & BASE ========== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --stone-50: #fafaf9;
+  --stone-100: #f5f5f4;
+  --stone-150: #edeae4;
+  --stone-200: #e7e5e4;
+  --stone-300: #d6d3d1;
+  --stone-400: #a8a29e;
+  --stone-500: #78716c;
+  --stone-600: #57534e;
+  --stone-700: #44403c;
+  --stone-800: #292524;
+  --stone-900: #1c1917;
+
+  --sage-100: #e8ede9;
+  --sage-200: #d1dbd3;
+  --sage-300: #a8bfad;
+  --sage-400: #7a9982;
+  --sage-500: #5a7d63;
+
+  --rose-100: #f2e8e5;
+  --rose-200: #e6d5cf;
+  --rose-300: #d4b5a8;
+
+  --ceramic-warm: #c4a882;
+  --ceramic-rose: #c9a09a;
+  --ceramic-sage: #a3aa8f;
+  --ceramic-clay: #b8947a;
+
+  --glass-bg: rgba(250, 249, 248, 0.55);
+  --glass-bg-hover: rgba(250, 249, 248, 0.68);
+  --glass-border: rgba(255, 255, 255, 0.45);
+  --glass-shadow: rgba(120, 113, 108, 0.08);
+  --glass-blur: 20px;
+
+  --ink: #292524;
+  --ink-light: #57534e;
+  --ink-muted: #78716c;
+
+  --paper: #faf9f7;
+  --paper-warm: #f7f4ef;
+
+  --accent: #7a9982;
+  --accent-soft: rgba(122, 153, 130, 0.15);
+
+  --shadow-sm: 0 1px 3px rgba(42, 37, 32, 0.04), 0 1px 2px rgba(42, 37, 32, 0.03);
+  --shadow-md: 0 4px 12px rgba(42, 37, 32, 0.05), 0 2px 4px rgba(42, 37, 32, 0.03);
+
+  --radius: 20px;
+  --radius-sm: 12px;
+  --radius-pill: 999px;
+
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* ===== ZEN BACKGROUND (from 3008) ===== */
+.zen-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.zen-background::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 120% 40% at 50% 0%, rgba(212, 181, 168, 0.5) 0%, transparent 70%),
+    radial-gradient(ellipse 200% 50% at 30% 65%, rgba(168, 191, 173, 0.35) 0%, transparent 50%),
+    radial-gradient(ellipse 180% 45% at 70% 60%, rgba(168, 191, 173, 0.25) 0%, transparent 45%),
+    radial-gradient(ellipse 300% 20% at 50% 55%, rgba(255, 255, 255, 0.5) 0%, transparent 70%),
+    radial-gradient(ellipse 250% 15% at 40% 70%, rgba(255, 255, 255, 0.35) 0%, transparent 60%),
+    linear-gradient(175deg, #e6d5cf 0%, #e8ede9 25%, #f5f5f4 45%, #e8ede9 65%, #d6d3d1 100%);
+}
+
+.fog-layer {
+  position: absolute;
+  width: 200%;
+  height: 100%;
+  top: 0;
+  left: -50%;
+  opacity: 0;
+  animation: fog-drift linear infinite;
+}
+
+.fog-1 {
+  background:
+    radial-gradient(ellipse 40% 8% at 20% 40%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(ellipse 35% 6% at 60% 55%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(ellipse 45% 10% at 80% 35%, rgba(255,255,255,0.25) 0%, transparent 100%);
+  animation-duration: 45s;
+  opacity: 0.6;
+}
+
+.fog-2 {
+  background:
+    radial-gradient(ellipse 50% 7% at 30% 50%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(ellipse 30% 5% at 70% 45%, rgba(255,255,255,0.25) 0%, transparent 100%);
+  animation-duration: 60s;
+  animation-delay: -15s;
+  opacity: 0.45;
+}
+
+.fog-3 {
+  background:
+    radial-gradient(ellipse 55% 9% at 40% 60%, rgba(232, 237, 233, 0.4) 0%, transparent 100%),
+    radial-gradient(ellipse 35% 6% at 15% 50%, rgba(232, 237, 233, 0.3) 0%, transparent 100%);
+  animation-duration: 75s;
+  animation-delay: -30s;
+  opacity: 0.35;
+}
+
+@keyframes fog-drift {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(25%); }
+}
+
+/* Zen decorative elements */
+.zen-enso-bg {
+  position: fixed;
+  bottom: 8%;
+  right: 6%;
+  width: 180px;
+  height: 180px;
+  border: 2.5px solid rgba(120, 113, 108, 0.08);
+  border-radius: 50%;
+  border-top-color: transparent;
+  border-right-color: rgba(120, 113, 108, 0.06);
+  transform: rotate(-30deg);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.zen-sand {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.zen-sand::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 8px,
+    rgba(168, 162, 158, 0.06) 8px,
+    rgba(168, 162, 158, 0.06) 9px
+  );
+  mask-image: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 100%);
+}
+
+/* ========== LAYOUT ========== */
+.app {
+  position: relative;
+  z-index: 2;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 2rem 2.5rem 3rem;
+}
+
+/* ========== GLASS PANEL ========== */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.3);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  box-shadow:
+    0 4px 24px var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass:hover {
+  background: var(--glass-bg-hover);
+  box-shadow:
+    0 8px 40px rgba(120, 113, 108, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transform: translateY(-1px);
+}
+
+/* ========== HEADER / BRIEFING ========== */
+.briefing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding: 0 0.5rem;
+  opacity: 0;
+  transform: translateY(12px);
+  animation: fadeUp 0.8s var(--ease-out) 0.1s forwards;
+}
+
+.briefing-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.greeting {
+  font-family: var(--font-display);
+  font-size: 2.8rem;
+  font-weight: 300;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.greeting strong {
+  font-weight: 500;
+}
+
+.date-display {
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.briefing-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--ink-light);
+  letter-spacing: 0.02em;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--sage-400);
+  box-shadow: 0 0 8px rgba(122, 153, 130, 0.4);
+  animation: pulse-dot 3s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(122, 153, 130, 0.4); }
+  50% { opacity: 0.6; box-shadow: 0 0 16px rgba(122, 153, 130, 0.6); }
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sage-300), var(--rose-300));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: white;
+  border: 2px solid rgba(255,255,255,0.6);
+  box-shadow: 0 2px 12px rgba(120, 113, 108, 0.12);
+}
+
+.live-clock {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 400;
+  color: var(--ink-light);
+  letter-spacing: 0.02em;
+  min-width: 80px;
+  text-align: right;
+}
+
+/* Enso circle */
+.enso-container {
+  width: 38px;
+  height: 38px;
+  cursor: pointer;
+  transition: transform 0.6s var(--ease-out);
+  display: none; /* hidden but keeping for branding if needed */
+}
+
+/* ========== DAILY BRIEFING BANNER ========== */
+.daily-briefing {
+  padding: 1.5rem 2rem;
+  margin-bottom: 2rem;
+  opacity: 0;
+  transform: translateY(12px);
+  animation: fadeUp 0.7s var(--ease-out) 0.15s forwards;
+}
+
+.briefing-label {
+  font-size: 0.68rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--sage-500);
+  margin-bottom: 0.65rem;
+}
+
+.briefing-text {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--ink-light);
+  line-height: 1.6;
+}
+
+/* ========== PANELS GRID ========== */
+.panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+  margin-bottom: 2rem;
+}
+
+.panel {
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(20px);
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel:nth-child(1) { animation: fadeUp 0.7s var(--ease-out) 0.25s forwards; }
+.panel:nth-child(2) { animation: fadeUp 0.7s var(--ease-out) 0.40s forwards; }
+.panel:nth-child(3) { animation: fadeUp 0.7s var(--ease-out) 0.55s forwards; }
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.4rem 1.6rem 1rem;
+  border-bottom: 1px solid rgba(168, 162, 158, 0.12);
+}
+
+.panel-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 500;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+.panel-badge {
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 0.25rem 0.65rem;
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--sage-500);
+  letter-spacing: 0.02em;
+}
+
+.panel-body {
+  padding: 1rem 1.6rem 1.6rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ========== DAY PROGRESS RING ========== */
+.day-progress-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: var(--radius-sm);
+}
+
+.day-ring-container {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.day-ring-bg {
+  fill: none;
+  stroke: var(--stone-200);
+  stroke-width: 3;
+}
+
+.day-ring-fill {
+  fill: none;
+  stroke: var(--ceramic-warm);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  transition: stroke-dashoffset 1s var(--ease-out);
+}
+
+.day-ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--ink-light);
+}
+
+.day-progress-text { flex: 1; }
+.day-progress-text .label {
+  font-size: 0.72rem;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+.day-progress-text .value {
+  font-size: 0.82rem;
+  color: var(--ink-light);
+  font-weight: 400;
+}
+
+/* ========== AGENDA ITEMS ========== */
+.agenda-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.agenda-section-label {
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  padding: 12px 12px 4px;
+}
+
+.agenda-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  transition: background 0.2s ease;
+  position: relative;
+}
+.agenda-item:hover { background: rgba(255, 255, 255, 0.35); }
+
+.agenda-item.is-now {
+  background: rgba(196, 168, 130, 0.1);
+  border-left: 2px solid var(--ceramic-warm);
+  padding-left: 10px;
+}
+
+.agenda-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.dot-sage { background: var(--sage-400); }
+.dot-rose { background: var(--rose-300); }
+.dot-clay { background: var(--ceramic-clay); }
+.dot-stone { background: var(--stone-400); }
+
+.agenda-time {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  min-width: 48px;
+  padding-top: 1px;
+  font-variant-numeric: tabular-nums;
+}
+.agenda-item.is-now .agenda-time { color: var(--ceramic-clay); font-weight: 500; }
+
+.agenda-content { flex: 1; }
+.agenda-title { font-size: 0.86rem; color: var(--ink); margin-bottom: 2px; font-weight: 400; }
+.agenda-meta { font-size: 0.72rem; color: var(--ink-muted); }
+
+.now-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: var(--ceramic-clay);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-left: auto;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.now-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--ceramic-clay);
+  border-radius: 50%;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+.breath-text {
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--ink-muted);
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid rgba(168, 162, 158, 0.1);
+  opacity: 0;
+  animation: breathe 6s ease-in-out infinite, fadeUp 0.7s var(--ease-out) 1.2s forwards;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+
+/* ========== TASKS PANEL ========== */
+.tag-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.tag-pill {
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(168, 162, 158, 0.2);
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  letter-spacing: 0.02em;
+  font-family: var(--font-body);
+}
+.tag-pill:hover { border-color: var(--stone-400); color: var(--ink-light); }
+.tag-pill.active { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+.task-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  transition: all 0.25s ease;
+  cursor: default;
+}
+.task-item:hover { background: rgba(255, 255, 255, 0.35); }
+.task-item.completed .task-label { text-decoration: line-through; color: var(--ink-muted); }
+
+.task-checkbox {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  cursor: pointer;
+}
+.task-checkbox input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; z-index: 1; }
+.task-checkbox .checkmark {
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid var(--stone-300);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  transition: all 0.25s var(--ease-spring);
+}
+.task-checkbox input:checked + .checkmark { background: var(--sage-400); border-color: var(--sage-400); }
+.task-checkbox .checkmark::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 2px;
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.2s var(--ease-spring);
+}
+.task-checkbox input:checked + .checkmark::after { transform: rotate(45deg) scale(1); }
+
+.task-content { flex: 1; min-width: 0; }
+.task-label { font-size: 0.85rem; color: var(--ink); font-weight: 400; transition: all 0.25s ease; line-height: 1.4; }
+
+.task-meta-row { display: flex; align-items: center; gap: 8px; margin-top: 3px; }
+
+.task-tag {
+  font-size: 0.62rem;
+  font-weight: 500;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.03em;
+}
+.task-tag.startup { background: rgba(122, 153, 130, 0.15); color: var(--sage-500); }
+.task-tag.school { background: rgba(142, 149, 170, 0.15); color: #6b7394; }
+.task-tag.upwork { background: rgba(196, 168, 130, 0.15); color: #9a7e56; }
+.task-tag.personal { background: rgba(201, 160, 154, 0.15); color: #a87a72; }
+
+.priority-badge {
+  font-size: 0.6rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.priority-badge.high { color: #b45858; }
+.priority-badge.med { color: var(--sage-500); }
+.priority-badge.low { color: var(--stone-400); }
+
+.add-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--stone-400);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+.add-task:hover { color: var(--ink-light); background: rgba(255, 255, 255, 0.3); }
+
+/* ========== CHAT PANEL ========== */
+.chat-panel .panel-body {
+  padding: 0;
+  height: 420px;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--stone-300) transparent;
+}
+.chat-messages::-webkit-scrollbar { width: 4px; }
+.chat-messages::-webkit-scrollbar-track { background: transparent; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--stone-300); border-radius: 4px; }
+
+.chat-msg { display: flex; gap: 0.7rem; align-items: flex-start; }
+.chat-msg.ai { flex-direction: row; }
+.chat-msg.user { flex-direction: row-reverse; }
+
+.chat-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 500;
+}
+.chat-avatar.ai-av { background: linear-gradient(135deg, var(--sage-300), var(--sage-400)); color: white; }
+.chat-avatar.user-av { background: linear-gradient(135deg, var(--rose-200), var(--rose-300)); color: white; }
+
+.chat-bubble {
+  padding: 0.65rem 1rem;
+  border-radius: 14px;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  max-width: 85%;
+  animation: bubbleIn 0.35s var(--ease-out);
+}
+
+@keyframes bubbleIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.chat-msg.ai .chat-bubble {
+  background: rgba(255, 255, 255, 0.45);
+  color: var(--ink-light);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+.chat-msg.user .chat-bubble {
+  background: rgba(122, 153, 130, 0.12);
+  color: var(--ink);
+  border: 1px solid rgba(122, 153, 130, 0.15);
+}
+
+.typing-indicator {
+  align-self: flex-start;
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 14px;
+  margin-left: 36px;
+}
+.typing-indicator.visible { display: flex; }
+
+.typing-dot {
+  width: 5px;
+  height: 5px;
+  background: var(--ink-muted);
+  border-radius: 50%;
+  animation: typingBounce 1.2s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-dot:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+.chat-input-area {
+  padding: 12px 1.4rem;
+  border-top: 1px solid rgba(168, 162, 158, 0.1);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.chat-input {
+  flex: 1;
+  border: 1px solid rgba(168, 162, 158, 0.2);
+  border-radius: 14px;
+  padding: 10px 16px;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  background: rgba(255, 255, 255, 0.35);
+  color: var(--ink);
+  outline: none;
+  transition: all 0.3s ease;
+}
+.chat-input::placeholder { color: var(--stone-400); }
+.chat-input:focus {
+  border-color: rgba(122, 153, 130, 0.35);
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(122, 153, 130, 0.08);
+}
+
+.chat-send {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: none;
+  background: var(--sage-400);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+.chat-send:hover { background: var(--sage-500); transform: scale(1.04); }
+.chat-send:active { transform: scale(0.96); }
+.chat-send svg { width: 16px; height: 16px; }
+
+/* ========== STATS BAR ========== */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  opacity: 0;
+  animation: fadeUp 0.7s var(--ease-out) 0.6s forwards;
+}
+
+.stat-card { padding: 1.2rem 1.4rem; text-align: center; }
+
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.stat-change { font-size: 0.68rem; margin-top: 0.3rem; font-weight: 500; }
+.stat-up { color: var(--sage-500); }
+
+/* ========== ANIMATIONS ========== */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ========== SCROLLBAR ========== */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(168,162,158,0.2); border-radius: 4px; }
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 1100px) {
+  .app { padding: 1.5rem 1.8rem 2.5rem; }
+  .panels { grid-template-columns: 1fr 1fr; }
+  .panel:nth-child(3) { grid-column: 1 / -1; }
+  .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  .chat-panel .panel-body { height: 360px; }
+}
+
+@media (max-width: 700px) {
+  .app { padding: 1rem 1rem 2rem; }
+  .briefing { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .briefing-right { width: 100%; justify-content: space-between; }
+  .greeting { font-size: 2rem; }
+  .panels { grid-template-columns: 1fr; gap: 1rem; }
+  .panel:nth-child(3) { grid-column: auto; }
+  .stats-bar { grid-template-columns: 1fr 1fr; gap: 1rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- Zen landscape background -->
+<div class="zen-background">
+  <div class="fog-layer fog-1"></div>
+  <div class="fog-layer fog-2"></div>
+  <div class="fog-layer fog-3"></div>
+</div>
+<div class="zen-enso-bg"></div>
+<div class="zen-sand"></div>
+
+<div class="app">
+
+  <!-- Header -->
+  <header class="briefing">
+    <div class="briefing-left">
+      <h1 class="greeting">Good morning, <strong>Steven</strong></h1>
+      <span class="date-display" id="dateDisplay"></span>
+    </div>
+    <div class="briefing-right">
+      <span class="live-clock" id="liveClock"></span>
+      <div class="status-pill glass">
+        <span class="status-dot"></span>
+        All systems calm
+      </div>
+      <div class="avatar">S</div>
+    </div>
+  </header>
+
+  <!-- Daily Briefing Banner -->
+  <div class="daily-briefing glass">
+    <div class="briefing-label">Daily Briefing</div>
+    <p class="briefing-text">
+      Four things on your plate today. CS 301 at ten, startup standup at two, Upwork client call at four-thirty,
+      and DoorDash from six. Your pitch deck draft is due Friday &mdash; steady momentum.
+    </p>
+  </div>
+
+  <!-- Three Panels -->
+  <div class="panels">
+
+    <!-- AGENDA PANEL -->
+    <section class="panel glass">
+      <div class="panel-header">
+        <span class="panel-title">Agenda</span>
+        <span class="panel-badge">4 events</span>
+      </div>
+      <div class="panel-body">
+        <div class="day-progress-wrapper">
+          <div class="day-ring-container">
+            <svg viewBox="0 0 44 44">
+              <circle class="day-ring-bg" cx="22" cy="22" r="18" />
+              <circle class="day-ring-fill" cx="22" cy="22" r="18"
+                stroke-dasharray="113.1" id="dayRingFill" />
+            </svg>
+            <span class="day-ring-label" id="dayRingLabel"></span>
+          </div>
+          <div class="day-progress-text">
+            <div class="label">Day Progress</div>
+            <div class="value" id="dayProgressText"></div>
+          </div>
+        </div>
+
+        <div class="agenda-section-label">Morning</div>
+        <ul class="agenda-list">
+          <li class="agenda-item" data-hour="7">
+            <span class="agenda-dot dot-stone"></span>
+            <span class="agenda-time">7:00</span>
+            <div class="agenda-content">
+              <div class="agenda-title">Morning journaling</div>
+              <div class="agenda-meta">Personal ritual</div>
+            </div>
+          </li>
+          <li class="agenda-item" data-hour="10">
+            <span class="agenda-dot dot-sage"></span>
+            <span class="agenda-time">10:00</span>
+            <div class="agenda-content">
+              <div class="agenda-title">CS 301 &mdash; Algorithms Lecture</div>
+              <div class="agenda-meta">Room 214, Whitman Hall</div>
+            </div>
+          </li>
+        </ul>
+
+        <div class="agenda-section-label">Afternoon</div>
+        <ul class="agenda-list">
+          <li class="agenda-item" data-hour="14">
+            <span class="agenda-dot dot-clay"></span>
+            <span class="agenda-time">2:00</span>
+            <div class="agenda-content">
+              <div class="agenda-title">Startup standup</div>
+              <div class="agenda-meta">Zoom &mdash; Weekly sync w/ co-founders</div>
+            </div>
+          </li>
+          <li class="agenda-item" data-hour="16">
+            <span class="agenda-dot dot-rose"></span>
+            <span class="agenda-time">4:30</span>
+            <div class="agenda-content">
+              <div class="agenda-title">Upwork client call</div>
+              <div class="agenda-meta">Review landing page mockups</div>
+            </div>
+          </li>
+        </ul>
+
+        <div class="agenda-section-label">Evening</div>
+        <ul class="agenda-list">
+          <li class="agenda-item" data-hour="18">
+            <span class="agenda-dot dot-stone"></span>
+            <span class="agenda-time">6:00</span>
+            <div class="agenda-content">
+              <div class="agenda-title">DoorDash shift</div>
+              <div class="agenda-meta">Downtown zone &mdash; 3 hr block</div>
+            </div>
+          </li>
+        </ul>
+
+        <p class="breath-text">The day holds space for you</p>
+      </div>
+    </section>
+
+    <!-- TASKS PANEL -->
+    <section class="panel glass">
+      <div class="panel-header">
+        <span class="panel-title">Tasks</span>
+        <span class="panel-badge" id="taskCount">6 open</span>
+      </div>
+      <div class="panel-body">
+        <div class="tag-filters">
+          <button class="tag-pill active" data-filter="all">All</button>
+          <button class="tag-pill" data-filter="startup">Startup</button>
+          <button class="tag-pill" data-filter="school">School</button>
+          <button class="tag-pill" data-filter="upwork">Upwork</button>
+          <button class="tag-pill" data-filter="personal">Personal</button>
+        </div>
+
+        <ul class="task-list" id="taskList">
+          <li class="task-item" data-tags="startup">
+            <label class="task-checkbox"><input type="checkbox"><span class="checkmark"></span></label>
+            <div class="task-content">
+              <div class="task-label">Finalize pitch deck for Friday's investor call</div>
+              <div class="task-meta-row">
+                <span class="task-tag startup">startup</span>
+                <span class="priority-badge high">HIGH</span>
+              </div>
+            </div>
+          </li>
+          <li class="task-item" data-tags="school">
+            <label class="task-checkbox"><input type="checkbox"><span class="checkmark"></span></label>
+            <div class="task-content">
+              <div class="task-label">Submit CS 301 problem set #4</div>
+              <div class="task-meta-row">
+                <span class="task-tag school">school</span>
+                <span class="priority-badge high">HIGH</span>
+              </div>
+            </div>
+          </li>
+          <li class="task-item" data-tags="upwork">
+            <label class="task-checkbox"><input type="checkbox"><span class="checkmark"></span></label>
+            <div class="task-content">
+              <div class="task-label">Deliver responsive navbar for client project</div>
+              <div class="task-meta-row">
+                <span class="task-tag upwork">upwork</span>
+                <span class="priority-badge med">MED</span>
+              </div>
+            </div>
+          </li>
+          <li class="task-item completed" data-tags="personal">
+            <label class="task-checkbox"><input type="checkbox" checked><span class="checkmark"></span></label>
+            <div class="task-content">
+              <div class="task-label">Renew gym membership</div>
+              <div class="task-meta-row">
+                <span class="task-tag personal">personal</span>
+                <span class="priority-badge low">LOW</span>
+              </div>
+            </div>
+          </li>
+          <li class="task-item" data-tags="startup">
+            <label class="task-checkbox"><input type="checkbox"><span class="checkmark"></span></label>
+            <div class="task-content">
+              <div class="task-label">Set up analytics tracking on landing page</div>
+              <div class="task-meta-row">
+                <span class="task-tag startup">startup</span>
+                <span class="priority-badge med">MED</span>
+              </div>
+            </div>
+          </li>
+          <li class="task-item" data-tags="school">
+            <label class="task-checkbox"><input type="checkbox"><span class="checkmark"></span></label>
+            <div class="task-content">
+              <div class="task-label">Read chapters 7-8 for Thursday discussion</div>
+              <div class="task-meta-row">
+                <span class="task-tag school">school</span>
+                <span class="priority-badge low">LOW</span>
+              </div>
+            </div>
+          </li>
+          <li class="task-item" data-tags="personal">
+            <label class="task-checkbox"><input type="checkbox"><span class="checkmark"></span></label>
+            <div class="task-content">
+              <div class="task-label">Meal prep for the week</div>
+              <div class="task-meta-row">
+                <span class="task-tag personal">personal</span>
+                <span class="priority-badge low">LOW</span>
+              </div>
+            </div>
+          </li>
+        </ul>
+
+        <div class="add-task">+ Add a task</div>
+      </div>
+    </section>
+
+    <!-- CHAT PANEL -->
+    <section class="panel glass chat-panel">
+      <div class="panel-header">
+        <span class="panel-title">Claude</span>
+        <span class="panel-badge">AI assistant</span>
+      </div>
+      <div class="panel-body">
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-msg ai">
+            <div class="chat-avatar ai-av">AI</div>
+            <div class="chat-bubble">Good morning, Steven. You've got a solid day ahead. Your CS 301 lecture starts in 20 minutes &mdash; I've pulled last week's notes if you need a quick refresher.</div>
+          </div>
+          <div class="chat-msg user">
+            <div class="chat-avatar user-av">S</div>
+            <div class="chat-bubble">What should I prioritize after class?</div>
+          </div>
+          <div class="chat-msg ai">
+            <div class="chat-avatar ai-av">AI</div>
+            <div class="chat-bubble">I'd suggest tackling the pitch deck before your 2 pm standup &mdash; your co-founders will want to review it. The CS problem set is due Thursday, so that can wait until tonight.</div>
+          </div>
+          <div class="chat-msg user">
+            <div class="chat-avatar user-av">S</div>
+            <div class="chat-bubble">Can you reschedule the Upwork call if it conflicts with DoorDash?</div>
+          </div>
+          <div class="chat-msg ai">
+            <div class="chat-avatar ai-av">AI</div>
+            <div class="chat-bubble">They don't overlap &mdash; your client call ends at 5:15 and DoorDash starts at 6. You'll have 45 minutes to grab dinner and drive to the zone. I'll set a reminder at 5:30.</div>
+          </div>
+        </div>
+        <div class="typing-indicator" id="typingIndicator">
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+          <span class="typing-dot"></span>
+        </div>
+        <div class="chat-input-area">
+          <input type="text" class="chat-input" id="chatInput" placeholder="Ask Claude anything..." />
+          <button class="chat-send" id="chatSend">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Stats Bar -->
+  <div class="stats-bar">
+    <div class="stat-card glass">
+      <div class="stat-value">12</div>
+      <div class="stat-label">Day Streak</div>
+      <div class="stat-change stat-up">Personal best</div>
+    </div>
+    <div class="stat-card glass">
+      <div class="stat-value">$2.4k</div>
+      <div class="stat-label">This Month</div>
+      <div class="stat-change stat-up">Upwork + DoorDash</div>
+    </div>
+    <div class="stat-card glass">
+      <div class="stat-value">3.8</div>
+      <div class="stat-label">GPA</div>
+      <div class="stat-change stat-up">On track</div>
+    </div>
+    <div class="stat-card glass">
+      <div class="stat-value">6</div>
+      <div class="stat-label">Open Tasks</div>
+      <div class="stat-change stat-up">2 due today</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ========== LIVE CLOCK & DATE ==========
+  function updateClock() {
+    var now = new Date();
+    var h = now.getHours();
+    var m = now.getMinutes().toString().padStart(2, '0');
+    var ampm = h >= 12 ? 'pm' : 'am';
+    var h12 = h % 12 || 12;
+    document.getElementById('liveClock').textContent = h12 + ':' + m + ' ' + ampm;
+  }
+
+  function updateDate() {
+    var now = new Date();
+    var opts = { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' };
+    document.getElementById('dateDisplay').textContent = now.toLocaleDateString('en-US', opts);
+  }
+
+  function updateGreeting() {
+    var h = new Date().getHours();
+    var period = 'morning';
+    if (h >= 12 && h < 17) period = 'afternoon';
+    else if (h >= 17) period = 'evening';
+    var el = document.querySelector('.greeting');
+    while (el.firstChild) el.removeChild(el.firstChild);
+    el.appendChild(document.createTextNode('Good ' + period + ', '));
+    var strong = document.createElement('strong');
+    strong.textContent = 'Steven';
+    el.appendChild(strong);
+  }
+
+  // ========== DAY PROGRESS RING ==========
+  function updateDayProgress() {
+    var now = new Date();
+    var dayStart = 7;
+    var dayEnd = 22;
+    var currentHour = now.getHours() + now.getMinutes() / 60;
+    var total = dayEnd - dayStart;
+    var elapsed = Math.max(0, Math.min(total, currentHour - dayStart));
+    var pct = Math.round((elapsed / total) * 100);
+
+    var circumference = 2 * Math.PI * 18;
+    var offset = circumference - (circumference * pct / 100);
+    document.getElementById('dayRingFill').style.strokeDashoffset = offset;
+    document.getElementById('dayRingLabel').textContent = pct + '%';
+
+    var remaining = Math.max(0, dayEnd - currentHour);
+    var rH = Math.floor(remaining);
+    var rM = Math.round((remaining - rH) * 60);
+    document.getElementById('dayProgressText').textContent =
+      remaining > 0 ? rH + 'h ' + rM + 'm remaining' : 'Day complete';
+  }
+
+  // ========== NOW INDICATOR ==========
+  function updateNowIndicator() {
+    var hour = new Date().getHours();
+    var items = document.querySelectorAll('.agenda-item');
+    items.forEach(function(item) {
+      item.classList.remove('is-now');
+      var existing = item.querySelector('.now-indicator');
+      if (existing) existing.parentNode.removeChild(existing);
+    });
+
+    var closest = null;
+    var closestDiff = Infinity;
+    items.forEach(function(item) {
+      var itemHour = parseInt(item.getAttribute('data-hour'), 10);
+      var diff = Math.abs(hour - itemHour);
+      if (diff < closestDiff && hour >= itemHour) {
+        closestDiff = diff;
+        closest = item;
+      }
+    });
+
+    if (closest && closestDiff <= 1) {
+      closest.classList.add('is-now');
+      var indicator = document.createElement('div');
+      indicator.className = 'now-indicator';
+      var dot = document.createElement('span');
+      dot.className = 'now-dot';
+      indicator.appendChild(dot);
+      indicator.appendChild(document.createTextNode(' Now'));
+      closest.appendChild(indicator);
+    }
+  }
+
+  // ========== TASK CHECKBOX TOGGLING ==========
+  function initTasks() {
+    document.getElementById('taskList').addEventListener('change', function(e) {
+      if (e.target.type === 'checkbox') {
+        var item = e.target.closest('.task-item');
+        item.classList.toggle('completed', e.target.checked);
+        updateTaskCount();
+      }
+    });
+  }
+
+  function updateTaskCount() {
+    var all = document.querySelectorAll('.task-item');
+    var open = 0;
+    all.forEach(function(t) {
+      if (t.style.display !== 'none' && !t.classList.contains('completed')) open++;
+    });
+    document.getElementById('taskCount').textContent = open + ' open';
+  }
+
+  // ========== TAG FILTERING ==========
+  function initTagFilters() {
+    var pills = document.querySelectorAll('.tag-pill');
+    pills.forEach(function(pill) {
+      pill.addEventListener('click', function() {
+        pills.forEach(function(p) { p.classList.remove('active'); });
+        pill.classList.add('active');
+        var filter = pill.getAttribute('data-filter');
+        document.querySelectorAll('.task-item').forEach(function(item) {
+          item.style.display = (filter === 'all' || item.getAttribute('data-tags') === filter) ? '' : 'none';
+        });
+        updateTaskCount();
+      });
+    });
+  }
+
+  // ========== CHAT ==========
+  var aiResponses = [
+    "I've pulled up your CS 301 notes from last Thursday. The key topics were graph traversal and Dijkstra's algorithm. Want me to create flashcards?",
+    "Your pitch deck is at 8 slides right now. I'd cut the market size slide and expand the traction section \u2014 investors care more about momentum.",
+    "The Upwork client left feedback on the navbar \u2014 they want the mobile breakpoint at 768px instead of 640px. Quick fix.",
+    "DoorDash peak pay is +$2.50 tonight in the downtown zone. I'd start at 6 sharp to catch the dinner rush.",
+    "Your focus time this week is up 18% \u2014 the morning blocks before class are working well. Keep that pattern.",
+    "I've scheduled 'meal prep' for Sunday at 11am and added a grocery list to your todos based on last week's meals.",
+    "The problem set is 4 questions on dynamic programming. Based on your past submissions, budget 2 hours minimum."
+  ];
+  var responseIndex = 0;
+
+  function initChat() {
+    var input = document.getElementById('chatInput');
+    var sendBtn = document.getElementById('chatSend');
+    var messages = document.getElementById('chatMessages');
+    var typingEl = document.getElementById('typingIndicator');
+
+    function sendMessage() {
+      var text = input.value.trim();
+      if (!text) return;
+
+      var userMsg = document.createElement('div');
+      userMsg.className = 'chat-msg user';
+      var userAv = document.createElement('div');
+      userAv.className = 'chat-avatar user-av';
+      userAv.textContent = 'S';
+      var userBubble = document.createElement('div');
+      userBubble.className = 'chat-bubble';
+      userBubble.textContent = text;
+      userMsg.appendChild(userAv);
+      userMsg.appendChild(userBubble);
+      messages.appendChild(userMsg);
+
+      input.value = '';
+      scrollChat();
+
+      typingEl.classList.add('visible');
+      scrollChat();
+
+      var delay = 1200 + Math.random() * 1200;
+      setTimeout(function() {
+        typingEl.classList.remove('visible');
+        var aiMsg = document.createElement('div');
+        aiMsg.className = 'chat-msg ai';
+        var aiAv = document.createElement('div');
+        aiAv.className = 'chat-avatar ai-av';
+        aiAv.textContent = 'AI';
+        var aiBubble = document.createElement('div');
+        aiBubble.className = 'chat-bubble';
+        aiBubble.textContent = aiResponses[responseIndex % aiResponses.length];
+        responseIndex++;
+        aiMsg.appendChild(aiAv);
+        aiMsg.appendChild(aiBubble);
+        messages.appendChild(aiMsg);
+        scrollChat();
+      }, delay);
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+  }
+
+  function scrollChat() {
+    var m = document.getElementById('chatMessages');
+    requestAnimationFrame(function() { m.scrollTop = m.scrollHeight; });
+  }
+
+  // ========== INIT ==========
+  document.addEventListener('DOMContentLoaded', function() {
+    updateClock();
+    updateDate();
+    updateGreeting();
+    updateDayProgress();
+    updateNowIndicator();
+    initTasks();
+    initTagFilters();
+    initChat();
+    updateTaskCount();
+
+    setInterval(updateClock, 1000);
+    setInterval(function() {
+      updateDayProgress();
+      updateNowIndicator();
+    }, 60000);
+  });
+})();
+</script>
+</body>
+</html>
