@@ -1,5 +1,5 @@
 interface BriefingBannerProps {
-  content: string;
+  content: string | null;
 }
 
 export function BriefingBanner({ content }: BriefingBannerProps) {
@@ -14,7 +14,13 @@ export function BriefingBanner({ content }: BriefingBannerProps) {
       }}
     >
       <div className="briefing-label">Daily Briefing</div>
-      <p className="briefing-text">{content}</p>
+      {content ? (
+        <p className="briefing-text">{content}</p>
+      ) : (
+        <p className="briefing-text" style={{ opacity: 0.5 }}>
+          Preparing your daily briefing...
+        </p>
+      )}
     </div>
   );
 }

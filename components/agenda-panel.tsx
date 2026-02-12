@@ -11,13 +11,46 @@ interface AgendaEvent {
   section: "Morning" | "Afternoon" | "Evening";
 }
 
-const EVENTS: AgendaEvent[] = [
+const MOCK_EVENTS: AgendaEvent[] = [
   { hour: 7, time: "7:00", title: "Morning journaling", meta: "Personal ritual", dot: "dot-stone", section: "Morning" },
   { hour: 10, time: "10:00", title: "CS 301 \u2014 Algorithms Lecture", meta: "Room 214, Whitman Hall", dot: "dot-sage", section: "Morning" },
   { hour: 14, time: "2:00", title: "Startup standup", meta: "Zoom \u2014 Weekly sync w/ co-founders", dot: "dot-clay", section: "Afternoon" },
   { hour: 16, time: "4:30", title: "Upwork client call", meta: "Review landing page mockups", dot: "dot-rose", section: "Afternoon" },
   { hour: 18, time: "6:00", title: "DoorDash shift", meta: "Downtown zone \u2014 3 hr block", dot: "dot-stone", section: "Evening" },
 ];
+
+const DOT_COLORS = ["dot-sage", "dot-clay", "dot-rose", "dot-stone"];
+
+function getSection(hour: number): "Morning" | "Afternoon" | "Evening" {
+  if (hour < 12) return "Morning";
+  if (hour < 17) return "Afternoon";
+  return "Evening";
+}
+
+function formatTime(dateStr: string): string {
+  const d = new Date(dateStr);
+  const h = d.getHours();
+  const m = d.getMinutes();
+  const hour12 = h % 12 || 12;
+  return m === 0 ? `${hour12}:00` : `${hour12}:${String(m).padStart(2, "0")}`;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapCalendarEvents(events: any[]): AgendaEvent[] {
+  return events.map((ev, i) => {
+    const start = ev.start?.dateTime ?? ev.start?.date ?? "";
+    const d = new Date(start);
+    const hour = d.getHours();
+    return {
+      hour,
+      time: formatTime(start),
+      title: ev.summary ?? "Untitled",
+      meta: ev.location ?? ev.description ?? "",
+      dot: DOT_COLORS[i % DOT_COLORS.length],
+      section: getSection(hour),
+    };
+  });
+}
 
 function getDayProgress() {
   const now = new Date();
@@ -40,6 +73,9 @@ function getNowHour() {
 export function AgendaPanel() {
   const [progress, setProgress] = useState(getDayProgress);
   const [nowHour, setNowHour] = useState(getNowHour);
+  const [events, setEvents] = useState<AgendaEvent[]>(MOCK_EVENTS);
+  const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -49,13 +85,56 @@ export function AgendaPanel() {
     return () => clearInterval(interval);
   }, []);
 
+  // Check Google Calendar auth status and fetch events
+  useEffect(() => {
+    async function init() {
+      try {
+        const statusRes = await fetch("/api/calendar/auth?action=status");
+        if (statusRes.ok) {
+          const { connected } = await statusRes.json();
+          setCalendarConnected(connected);
+
+          if (connected) {
+            const eventsRes = await fetch("/api/calendar");
+            if (eventsRes.ok) {
+              const data = await eventsRes.json();
+              if (data.events && Array.isArray(data.events) && data.events.length > 0) {
+                setEvents(mapCalendarEvents(data.events));
+              }
+            }
+          }
+        }
+      } catch {
+        setCalendarConnected(false);
+      }
+    }
+    init();
+  }, []);
+
+  const handleConnectGoogle = async () => {
+    setIsConnecting(true);
+    try {
+      const res = await fetch("/api/calendar/auth?action=url");
+      if (res.ok) {
+        const { url } = await res.json();
+        if (url) {
+          window.location.href = url;
+          return;
+        }
+      }
+    } catch {
+      // silently fail
+    }
+    setIsConnecting(false);
+  };
+
   const circumference = 2 * Math.PI * 18;
   const offset = circumference - (circumference * progress.pct) / 100;
 
   // Find the closest current event
   let closestHour: number | null = null;
   let closestDiff = Infinity;
-  for (const ev of EVENTS) {
+  for (const ev of events) {
     const diff = Math.abs(nowHour - ev.hour);
     if (diff < closestDiff && nowHour >= ev.hour) {
       closestDiff = diff;
@@ -79,7 +158,7 @@ export function AgendaPanel() {
     >
       <div className="panel-header">
         <span className="panel-title">Agenda</span>
-        <span className="panel-badge">{EVENTS.length} events</span>
+        <span className="panel-badge">{events.length} events</span>
       </div>
       <div className="panel-body">
         {/* Day Progress Ring */}
@@ -108,9 +187,23 @@ export function AgendaPanel() {
           </div>
         </div>
 
+        {/* Google Calendar Connect */}
+        {calendarConnected === false && (
+          <button
+            className="connect-google-btn"
+            onClick={handleConnectGoogle}
+            disabled={isConnecting}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            {isConnecting ? "Connecting..." : "Connect Google Calendar"}
+          </button>
+        )}
+
         {/* Event Sections */}
         {sections.map((section) => {
-          const sectionEvents = EVENTS.filter((e) => e.section === section);
+          const sectionEvents = events.filter((e) => e.section === section);
           if (sectionEvents.length === 0) return null;
           return (
             <div key={section}>

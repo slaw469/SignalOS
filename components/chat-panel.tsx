@@ -10,6 +10,10 @@ interface Message {
   content: string;
 }
 
+interface ChatPanelProps {
+  onToolAction?: () => void;
+}
+
 const INITIAL_MESSAGES: Message[] = [
   {
     id: "1",
@@ -17,46 +21,14 @@ const INITIAL_MESSAGES: Message[] = [
     content:
       "Good morning, Steven. You've got a solid day ahead. Your CS 301 lecture starts in 20 minutes \u2014 I've pulled last week's notes if you need a quick refresher.",
   },
-  {
-    id: "2",
-    role: "user",
-    content: "What should I prioritize after class?",
-  },
-  {
-    id: "3",
-    role: "assistant",
-    content:
-      "I'd suggest tackling the pitch deck before your 2 pm standup \u2014 your co-founders will want to review it. The CS problem set is due Thursday, so that can wait until tonight.",
-  },
-  {
-    id: "4",
-    role: "user",
-    content: "Can you reschedule the Upwork call if it conflicts with DoorDash?",
-  },
-  {
-    id: "5",
-    role: "assistant",
-    content:
-      "They don't overlap \u2014 your client call ends at 5:15 and DoorDash starts at 6. You'll have 45 minutes to grab dinner and drive to the zone. I'll set a reminder at 5:30.",
-  },
 ];
 
-const AI_RESPONSES = [
-  "I've pulled up your CS 301 notes from last Thursday. The key topics were graph traversal and Dijkstra's algorithm. Want me to create flashcards?",
-  "Your pitch deck is at 8 slides right now. I'd cut the market size slide and expand the traction section \u2014 investors care more about momentum.",
-  "The Upwork client left feedback on the navbar \u2014 they want the mobile breakpoint at 768px instead of 640px. Quick fix.",
-  "DoorDash peak pay is +$2.50 tonight in the downtown zone. I'd start at 6 sharp to catch the dinner rush.",
-  "Your focus time this week is up 18% \u2014 the morning blocks before class are working well. Keep that pattern.",
-  "I've scheduled 'meal prep' for Sunday at 11am and added a grocery list to your todos based on last week's meals.",
-  "The problem set is 4 questions on dynamic programming. Based on your past submissions, budget 2 hours minimum.",
-];
-
-export function ChatPanel() {
+export function ChatPanel({ onToolAction }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const responseIndexRef = useRef(0);
 
   function scrollToBottom() {
     requestAnimationFrame(() => {
@@ -64,13 +36,38 @@ export function ChatPanel() {
     });
   }
 
+  // Load message history on mount
+  useEffect(() => {
+    async function loadHistory() {
+      try {
+        const res = await fetch("/api/messages");
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            const mapped: Message[] = data.map((m: { id?: string; role: string; content: string; created_at?: string }) => ({
+              id: m.id ?? m.created_at ?? String(Math.random()),
+              role: m.role as "user" | "assistant",
+              content: m.content,
+            }));
+            setMessages(mapped);
+          }
+        }
+      } catch {
+        // keep initial messages
+      } finally {
+        setLoaded(true);
+      }
+    }
+    loadHistory();
+  }, []);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  function sendMessage() {
+  async function sendMessage() {
     const text = input.trim();
-    if (!text) return;
+    if (!text || isTyping) return;
 
     const userMsg: Message = {
       id: Date.now().toString(),
@@ -81,17 +78,44 @@ export function ChatPanel() {
     setInput("");
     setIsTyping(true);
 
-    const delay = 1200 + Math.random() * 1200;
-    setTimeout(() => {
-      setIsTyping(false);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const aiMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: data.response ?? "I couldn't process that right now.",
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+
+        // If the AI used tools (e.g. added a todo, created calendar event), trigger refresh
+        if (data.tool_calls && data.tool_calls.length > 0 && onToolAction) {
+          onToolAction();
+        }
+      } else {
+        const aiMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "Something went wrong. Please try again.",
+        };
+        setMessages((prev) => [...prev, aiMsg]);
+      }
+    } catch {
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: AI_RESPONSES[responseIndexRef.current % AI_RESPONSES.length],
+        content: "I'm having trouble connecting right now. Please try again.",
       };
-      responseIndexRef.current++;
       setMessages((prev) => [...prev, aiMsg]);
-    }, delay);
+    } finally {
+      setIsTyping(false);
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -114,7 +138,7 @@ export function ChatPanel() {
     >
       <div className="panel-header">
         <span className="panel-title">Claude</span>
-        <span className="panel-badge">AI assistant</span>
+        <span className="panel-badge">{loaded ? "AI assistant" : "loading..."}</span>
       </div>
       <div className="panel-body">
         <div className="chat-messages">
@@ -138,8 +162,9 @@ export function ChatPanel() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
+            disabled={isTyping}
           />
-          <button className="chat-send" onClick={sendMessage}>
+          <button className="chat-send" onClick={sendMessage} disabled={isTyping}>
             <Send size={16} />
           </button>
         </div>

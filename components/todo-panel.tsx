@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { TodoItem, type Todo } from "@/components/todo-item";
+import { Plus, X } from "lucide-react";
 
 const MOCK_TODOS: Todo[] = [
   { id: "1", title: "Finalize pitch deck for Friday's investor call", completed: false, tags: ["startup"], priority: "high" },
@@ -18,11 +19,16 @@ const FILTERS = ["All", "Startup", "School", "Upwork", "Personal"] as const;
 export function TodoPanel() {
   const [todos, setTodos] = useState<Todo[]>(MOCK_TODOS);
   const [activeFilter, setActiveFilter] = useState("All");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newPriority, setNewPriority] = useState<"high" | "medium" | "low">("medium");
+  const [newTag, setNewTag] = useState("personal");
+  const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
     async function fetchTodos() {
       try {
-        const res = await fetch("/api/todos");
+        const res = await fetch("/api/todos?include_completed=true");
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
@@ -36,11 +42,66 @@ export function TodoPanel() {
     fetchTodos();
   }, []);
 
-  const handleToggle = useCallback((id: string) => {
+  const handleToggle = useCallback(async (id: string, completed: boolean) => {
+    // Optimistic update
     setTodos((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+      prev.map((t) => (t.id === id ? { ...t, completed } : t))
     );
+    try {
+      const res = await fetch(`/api/todos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setTodos((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      }
+    } catch {
+      // Revert on error
+      setTodos((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, completed: !completed } : t))
+      );
+    }
   }, []);
+
+  const handleDelete = useCallback(async (id: string) => {
+    const prev = todos;
+    setTodos((t) => t.filter((todo) => todo.id !== id));
+    try {
+      const res = await fetch(`/api/todos/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        setTodos(prev);
+      }
+    } catch {
+      setTodos(prev);
+    }
+  }, [todos]);
+
+  const handleAddTodo = async () => {
+    const title = newTitle.trim();
+    if (!title) return;
+    setIsAdding(true);
+    try {
+      const res = await fetch("/api/todos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, priority: newPriority, tags: [newTag] }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setTodos((prev) => [created, ...prev]);
+        setNewTitle("");
+        setNewPriority("medium");
+        setNewTag("personal");
+        setShowAddForm(false);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setIsAdding(false);
+    }
+  };
 
   const filtered =
     activeFilter === "All"
@@ -81,11 +142,67 @@ export function TodoPanel() {
 
         <ul className="flex flex-col gap-[2px] flex-1" style={{ listStyle: "none" }}>
           {filtered.map((todo) => (
-            <TodoItem key={todo.id} todo={todo} onToggle={handleToggle} />
+            <TodoItem
+              key={todo.id}
+              todo={todo}
+              onToggle={handleToggle}
+              onDelete={handleDelete}
+            />
           ))}
         </ul>
 
-        <div className="add-task">+ Add a task</div>
+        {showAddForm ? (
+          <div className="add-task-form">
+            <div className="add-task-form-row">
+              <input
+                type="text"
+                className="add-task-input"
+                placeholder="What needs to be done?"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAddTodo(); }}
+                autoFocus
+              />
+            </div>
+            <div className="add-task-form-row" style={{ gap: 8 }}>
+              <select
+                className="add-task-select"
+                value={newPriority}
+                onChange={(e) => setNewPriority(e.target.value as "high" | "medium" | "low")}
+              >
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+              <select
+                className="add-task-select"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+              >
+                <option value="startup">Startup</option>
+                <option value="school">School</option>
+                <option value="upwork">Upwork</option>
+                <option value="personal">Personal</option>
+              </select>
+              <button
+                className="add-task-submit"
+                onClick={handleAddTodo}
+                disabled={isAdding || !newTitle.trim()}
+              >
+                <Plus size={14} />
+                {isAdding ? "Adding..." : "Add"}
+              </button>
+              <button
+                className="add-task-cancel"
+                onClick={() => { setShowAddForm(false); setNewTitle(""); }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="add-task" onClick={() => setShowAddForm(true)}>+ Add a task</div>
+        )}
       </div>
     </section>
   );
