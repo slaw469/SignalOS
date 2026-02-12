@@ -47,3 +47,21 @@ export interface Setting {
   value: string;
   updated_at: string;
 }
+
+export type TweetStatus = "draft" | "scheduled" | "posting" | "posted" | "failed";
+
+export interface Tweet {
+  id: string;
+  content: string;
+  thread_id: string | null;
+  thread_order: number;
+  media_urls: string[];
+  status: TweetStatus;
+  scheduled_at: string | null;
+  posted_at: string | null;
+  twitter_id: string | null;
+  error: string | null;
+  recurring_rule: string | null;
+  created_at: string;
+  updated_at: string;
+}

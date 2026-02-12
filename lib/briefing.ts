@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { supabase } from "@/lib/supabase";
 import { getCalendarEvents } from "@/lib/google-calendar";
-import type { CalendarEvent, Todo } from "@/lib/types";
+import type { CalendarEvent, Todo, Tweet } from "@/lib/types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const MODEL = "gemini-2.0-flash";
@@ -57,7 +57,28 @@ export async function generateBriefing(): Promise<{ date: string; content: strin
     // Google Calendar not connected — skip events
   }
 
-  // 3. Build the prompt
+  // 3. Fetch tweet queue (drafts + scheduled for today)
+  const startOfDayISO = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const endOfDayISO = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+
+  const { data: tweetDrafts } = await supabase
+    .from("tweets")
+    .select("id, content, status, scheduled_at, thread_id")
+    .eq("status", "draft")
+    .order("created_at", { ascending: false });
+
+  const { data: tweetScheduled } = await supabase
+    .from("tweets")
+    .select("id, content, status, scheduled_at, thread_id")
+    .eq("status", "scheduled")
+    .gte("scheduled_at", startOfDayISO)
+    .lt("scheduled_at", endOfDayISO)
+    .order("scheduled_at", { ascending: true });
+
+  const drafts = (tweetDrafts ?? []) as Pick<Tweet, "id" | "content" | "status" | "scheduled_at" | "thread_id">[];
+  const scheduledToday = (tweetScheduled ?? []) as Pick<Tweet, "id" | "content" | "status" | "scheduled_at" | "thread_id">[];
+
+  // 4. Build the prompt
   const eventsText =
     todayEvents.length > 0
       ? todayEvents
@@ -81,6 +102,24 @@ export async function generateBriefing(): Promise<{ date: string; content: strin
           .join("\n")
       : "No open todos.";
 
+  const tweetsText = (() => {
+    const lines: string[] = [];
+    if (drafts.length > 0) {
+      lines.push(`${drafts.length} draft${drafts.length === 1 ? "" : "s"} in queue:`);
+      for (const d of drafts.slice(0, 5)) {
+        lines.push(`  - "${d.content.slice(0, 80)}${d.content.length > 80 ? "..." : ""}"`);
+      }
+    }
+    if (scheduledToday.length > 0) {
+      lines.push(`${scheduledToday.length} scheduled for today:`);
+      for (const s of scheduledToday) {
+        const time = s.scheduled_at ? formatTime(s.scheduled_at) : "TBD";
+        lines.push(`  - ${time}: "${s.content.slice(0, 80)}${s.content.length > 80 ? "..." : ""}"`);
+      }
+    }
+    return lines.length > 0 ? lines.join("\n") : "No tweets in queue.";
+  })();
+
   const prompt = `Today is ${dateLabel}.
 
 Here is Steven's schedule and tasks:
@@ -91,14 +130,19 @@ ${eventsText}
 ## Open Todos
 ${todosText}
 
-Generate a concise morning briefing for Steven (2-3 sentences). Mention key events, top-priority tasks, and any scheduling notes. Be friendly but direct. Do not use bullet points — write it as a short paragraph.`;
+## Tweet Queue
+${tweetsText}
 
-  // 4. Call Gemini
+Generate a concise morning briefing for Steven (2-3 sentences). Mention key events, top-priority tasks, and any scheduling notes. Be friendly but direct. Do not use bullet points — write it as a short paragraph.
+
+Then, under a "Tweet ideas" heading, suggest 2-3 tweet ideas based on what Steven is working on today. Keep them casual and authentic. Each tweet idea should be under 280 characters.`;
+
+  // 5. Call Gemini
   const model = genAI.getGenerativeModel({ model: MODEL });
   const result = await model.generateContent(prompt);
   const content = result.response.text() || "Good morning! Have a productive day.";
 
-  // 5. Upsert into briefings table
+  // 6. Upsert into briefings table
   const { error: upsertError } = await supabase
     .from("briefings")
     .upsert({ date: today, content }, { onConflict: "date" });
