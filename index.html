@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HustleOS — Minimal / Zen</title>
+<title>SignalOS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
@@ -68,6 +68,234 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
+
+/* ========== DARK MODE ========== */
+[data-theme="dark"] {
+  --stone-50: #1a1a1a;
+  --stone-100: #1e1e1e;
+  --stone-150: #252525;
+  --stone-200: #2a2a2a;
+  --stone-300: #3a3a3a;
+  --stone-400: #6b6b6b;
+  --stone-500: #8a8a8a;
+  --stone-600: #a0a0a0;
+  --stone-700: #b8b8b8;
+  --stone-800: #d4d4d4;
+  --stone-900: #ececec;
+
+  --sage-100: #1a261c;
+  --sage-200: #243828;
+  --sage-300: #3d6345;
+  --sage-400: #5a8f65;
+  --sage-500: #72ad7e;
+
+  --rose-100: #2a1f1c;
+  --rose-200: #3d2e28;
+  --rose-300: #7a5a50;
+
+  --ceramic-warm: #c4a882;
+  --ceramic-rose: #b8877f;
+  --ceramic-sage: #7a9a6a;
+  --ceramic-clay: #c49a70;
+
+  --glass-bg: rgba(28, 28, 30, 0.6);
+  --glass-bg-hover: rgba(38, 38, 42, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: rgba(0, 0, 0, 0.25);
+  --glass-blur: 24px;
+
+  --ink: #e8e4df;
+  --ink-light: #b8b3ac;
+  --ink-muted: #8a857e;
+
+  --paper: #141414;
+  --paper-warm: #181614;
+
+  --accent: #5a8f65;
+  --accent-soft: rgba(90, 143, 101, 0.18);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="dark"] .zen-background::before {
+  background:
+    radial-gradient(ellipse 120% 40% at 50% 0%, rgba(90, 60, 45, 0.25) 0%, transparent 70%),
+    radial-gradient(ellipse 200% 50% at 30% 65%, rgba(40, 70, 50, 0.2) 0%, transparent 50%),
+    radial-gradient(ellipse 180% 45% at 70% 60%, rgba(40, 70, 50, 0.15) 0%, transparent 45%),
+    radial-gradient(ellipse 300% 20% at 50% 55%, rgba(30, 30, 30, 0.4) 0%, transparent 70%),
+    radial-gradient(ellipse 250% 15% at 40% 70%, rgba(30, 30, 30, 0.3) 0%, transparent 60%),
+    linear-gradient(175deg, #1a1412 0%, #151a16 25%, #161616 45%, #151a16 65%, #121212 100%);
+}
+
+[data-theme="dark"] .fog-1 {
+  background:
+    radial-gradient(ellipse 40% 8% at 20% 40%, rgba(255,255,255,0.06) 0%, transparent 100%),
+    radial-gradient(ellipse 35% 6% at 60% 55%, rgba(255,255,255,0.04) 0%, transparent 100%),
+    radial-gradient(ellipse 45% 10% at 80% 35%, rgba(255,255,255,0.03) 0%, transparent 100%);
+  opacity: 0.5;
+}
+
+[data-theme="dark"] .fog-2 {
+  background:
+    radial-gradient(ellipse 50% 7% at 30% 50%, rgba(255,255,255,0.04) 0%, transparent 100%),
+    radial-gradient(ellipse 30% 5% at 70% 45%, rgba(255,255,255,0.03) 0%, transparent 100%);
+  opacity: 0.35;
+}
+
+[data-theme="dark"] .fog-3 {
+  background:
+    radial-gradient(ellipse 55% 9% at 40% 60%, rgba(40, 70, 50, 0.15) 0%, transparent 100%),
+    radial-gradient(ellipse 35% 6% at 15% 50%, rgba(40, 70, 50, 0.1) 0%, transparent 100%);
+  opacity: 0.3;
+}
+
+[data-theme="dark"] .zen-enso-bg {
+  border-color: rgba(255, 255, 255, 0.04);
+  border-right-color: rgba(255, 255, 255, 0.03);
+  border-top-color: transparent;
+}
+
+[data-theme="dark"] .zen-sand::before {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 8px,
+    rgba(255, 255, 255, 0.03) 8px,
+    rgba(255, 255, 255, 0.03) 9px
+  );
+}
+
+[data-theme="dark"] .day-progress-wrapper {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .agenda-item:hover,
+[data-theme="dark"] .task-item:hover { background: rgba(255, 255, 255, 0.05); }
+
+[data-theme="dark"] .agenda-item.is-now {
+  background: rgba(196, 168, 130, 0.08);
+}
+
+[data-theme="dark"] .tag-pill {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+[data-theme="dark"] .tag-pill:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--ink-light);
+}
+[data-theme="dark"] .tag-pill.active {
+  background: var(--ink);
+  color: #1a1a1a;
+  border-color: var(--ink);
+}
+
+[data-theme="dark"] .task-checkbox .checkmark {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .chat-msg.ai .chat-bubble {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+[data-theme="dark"] .chat-msg.user .chat-bubble {
+  background: rgba(90, 143, 101, 0.12);
+  border-color: rgba(90, 143, 101, 0.18);
+}
+
+[data-theme="dark"] .chat-input {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+}
+[data-theme="dark"] .chat-input::placeholder { color: var(--stone-500); }
+[data-theme="dark"] .chat-input:focus {
+  border-color: rgba(90, 143, 101, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(90, 143, 101, 0.1);
+}
+
+[data-theme="dark"] .typing-indicator {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .panel-header {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .chat-input-area {
+  border-top-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .breath-text {
+  border-top-color: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .add-task:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .glass:hover {
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+[data-theme="dark"] .glass {
+  box-shadow:
+    0 4px 24px var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="dark"] .chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); }
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
+
+/* ========== THEME TOGGLE ========== */
+.theme-toggle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(168, 162, 158, 0.2);
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.4s var(--ease-out);
+  color: var(--ink-light);
+  flex-shrink: 0;
+}
+.theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.45);
+  transform: scale(1.06);
+  border-color: rgba(168, 162, 158, 0.35);
+}
+[data-theme="dark"] .theme-toggle {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+}
+[data-theme="dark"] .theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.5s var(--ease-spring);
+}
+.theme-toggle:active svg { transform: rotate(30deg); }
+
+.theme-toggle .icon-sun,
+.theme-toggle .icon-moon { display: none; }
+
+[data-theme="light"] .theme-toggle .icon-moon,
+:root:not([data-theme="dark"]) .theme-toggle .icon-moon { display: block; }
+
+[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
 
 html {
   font-size: 16px;
@@ -910,6 +1138,18 @@ body {
         <span class="status-dot"></span>
         All systems calm
       </div>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark mode">
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+      </button>
       <div class="avatar">S</div>
     </div>
   </header>
@@ -1174,6 +1414,21 @@ body {
 (function() {
   'use strict';
 
+  // ========== THEME TOGGLE ==========
+  function initTheme() {
+    var saved = localStorage.getItem('signalos-theme');
+    var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var theme = saved || (prefersDark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+
+    document.getElementById('themeToggle').addEventListener('click', function() {
+      var current = document.documentElement.getAttribute('data-theme');
+      var next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('signalos-theme', next);
+    });
+  }
+
   // ========== LIVE CLOCK & DATE ==========
   function updateClock() {
     var now = new Date();
@@ -1366,6 +1621,7 @@ body {
 
   // ========== INIT ==========
   document.addEventListener('DOMContentLoaded', function() {
+    initTheme();
     updateClock();
     updateDate();
     updateGreeting();
