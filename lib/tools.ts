@@ -5,6 +5,12 @@ import {
   updateCalendarEvent as gcalUpdate,
   deleteCalendarEvent as gcalDelete,
 } from "@/lib/google-calendar";
+import {
+  getAuthenticatedTwitterClient,
+  postTweet as twitterPostTweet,
+  postThread as twitterPostThread,
+  deleteTweet as twitterDeleteTweet,
+} from "@/lib/twitter";
 
 interface ToolResult {
   success: boolean;
@@ -232,6 +238,231 @@ async function deleteCalendarEvent(input: {
   }
 }
 
+// --- Twitter Handlers ---
+
+const TWITTER_NOT_CONNECTED =
+  "Twitter is not connected. Please connect your Twitter account first.";
+
+async function draftTweet(input: {
+  content: string;
+  thread?: boolean;
+  schedule_at?: string;
+}): Promise<ToolResult> {
+  const status = input.schedule_at ? "scheduled" : "draft";
+  const thread_id = input.thread ? crypto.randomUUID() : null;
+
+  const { data, error } = await supabase
+    .from("tweets")
+    .insert({
+      content: input.content,
+      status,
+      scheduled_at: input.schedule_at ?? null,
+      thread_id,
+      thread_order: thread_id ? 0 : 0,
+    })
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data };
+}
+
+async function addThreadTweet(input: {
+  thread_id: string;
+  content: string;
+}): Promise<ToolResult> {
+  // Find the current max thread_order for this thread
+  const { data: existing, error: fetchError } = await supabase
+    .from("tweets")
+    .select("thread_order")
+    .eq("thread_id", input.thread_id)
+    .order("thread_order", { ascending: false })
+    .limit(1);
+
+  if (fetchError) return { success: false, error: fetchError.message };
+
+  const nextOrder = existing && existing.length > 0 ? existing[0].thread_order + 1 : 1;
+
+  const { data, error } = await supabase
+    .from("tweets")
+    .insert({
+      content: input.content,
+      thread_id: input.thread_id,
+      thread_order: nextOrder,
+      status: "draft",
+    })
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data };
+}
+
+async function scheduleTweet(input: {
+  tweet_id: string;
+  scheduled_at: string;
+}): Promise<ToolResult> {
+  const { data, error } = await supabase
+    .from("tweets")
+    .update({
+      scheduled_at: input.scheduled_at,
+      status: "scheduled",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", input.tweet_id)
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  if (!data) return { success: false, error: "Tweet not found" };
+  return { success: true, data };
+}
+
+async function postTweetNow(input: { tweet_id: string }): Promise<ToolResult> {
+  // Get the tweet from DB
+  const { data: tweet, error: fetchError } = await supabase
+    .from("tweets")
+    .select("*")
+    .eq("id", input.tweet_id)
+    .single();
+
+  if (fetchError) return { success: false, error: fetchError.message };
+  if (!tweet) return { success: false, error: "Tweet not found" };
+
+  const client = await getAuthenticatedTwitterClient();
+  if (!client) return { success: false, error: TWITTER_NOT_CONNECTED };
+
+  try {
+    // Check if this is part of a thread
+    if (tweet.thread_id) {
+      // Fetch all tweets in this thread, ordered
+      const { data: threadTweets, error: threadError } = await supabase
+        .from("tweets")
+        .select("*")
+        .eq("thread_id", tweet.thread_id)
+        .order("thread_order", { ascending: true });
+
+      if (threadError) return { success: false, error: threadError.message };
+      if (!threadTweets || threadTweets.length === 0) {
+        return { success: false, error: "No tweets found in thread" };
+      }
+
+      const tweetContents = threadTweets.map((t: { content: string }) => t.content);
+      const results = await twitterPostThread(client, tweetContents);
+
+      // Update all thread tweets with posted status
+      for (let i = 0; i < threadTweets.length; i++) {
+        const twitterId = results[i]?.data?.id ?? null;
+        await supabase
+          .from("tweets")
+          .update({
+            status: "posted",
+            twitter_id: twitterId,
+            posted_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", threadTweets[i].id);
+      }
+
+      return { success: true, data: { posted: threadTweets.length, thread_id: tweet.thread_id } };
+    } else {
+      // Single tweet
+      const result = await twitterPostTweet(client, tweet.content);
+      const twitterId = result?.data?.id ?? null;
+
+      await supabase
+        .from("tweets")
+        .update({
+          status: "posted",
+          twitter_id: twitterId,
+          posted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", input.tweet_id);
+
+      return { success: true, data: { posted: 1, twitter_id: twitterId } };
+    }
+  } catch (err) {
+    // Mark as failed with error
+    await supabase
+      .from("tweets")
+      .update({
+        status: "failed",
+        error: err instanceof Error ? err.message : String(err),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", input.tweet_id);
+
+    return {
+      success: false,
+      error: `Failed to post tweet: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+async function getTweetQueue(input: {
+  status?: string;
+}): Promise<ToolResult> {
+  let query = supabase.from("tweets").select("*");
+
+  if (input.status) {
+    query = query.eq("status", input.status);
+  }
+
+  const { data, error } = await query.order("created_at", { ascending: false });
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data };
+}
+
+async function handleDeleteTweet(input: { tweet_id: string }): Promise<ToolResult> {
+  // Fetch the tweet first to check if it's posted
+  const { data: tweet, error: fetchError } = await supabase
+    .from("tweets")
+    .select("*")
+    .eq("id", input.tweet_id)
+    .single();
+
+  if (fetchError) return { success: false, error: fetchError.message };
+  if (!tweet) return { success: false, error: "Tweet not found" };
+
+  // If posted with a twitter_id, also delete from Twitter
+  if (tweet.status === "posted" && tweet.twitter_id) {
+    const client = await getAuthenticatedTwitterClient();
+    if (client) {
+      try {
+        await twitterDeleteTweet(client, tweet.twitter_id);
+      } catch (err) {
+        // Log but don't fail the DB delete
+        console.error("Failed to delete tweet from Twitter:", err);
+      }
+    }
+  }
+
+  const { error, count } = await supabase
+    .from("tweets")
+    .delete({ count: "exact" })
+    .eq("id", input.tweet_id);
+
+  if (error) return { success: false, error: error.message };
+  if (count === 0) return { success: false, error: "Tweet not found" };
+  return { success: true, data: { deleted: input.tweet_id } };
+}
+
+async function suggestTweetIdeas(input: {
+  topic?: string;
+  count?: number;
+}): Promise<ToolResult> {
+  const count = input.count ?? 3;
+  const topicStr = input.topic ? ` about "${input.topic}"` : "";
+  return {
+    success: true,
+    data: {
+      message: `Please suggest ${count} tweet ideas${topicStr}. Keep them under 280 characters, casual and technical in Steven's builder voice. Include relevant hashtags.`,
+    },
+  };
+}
+
 // --- Main Router ---
 
 export async function executeTool(
@@ -263,6 +494,20 @@ export async function executeTool(
       return deleteCalendarEvent(
         toolInput as Parameters<typeof deleteCalendarEvent>[0]
       );
+    case "draft_tweet":
+      return draftTweet(toolInput as Parameters<typeof draftTweet>[0]);
+    case "add_thread_tweet":
+      return addThreadTweet(toolInput as Parameters<typeof addThreadTweet>[0]);
+    case "schedule_tweet":
+      return scheduleTweet(toolInput as Parameters<typeof scheduleTweet>[0]);
+    case "post_tweet_now":
+      return postTweetNow(toolInput as Parameters<typeof postTweetNow>[0]);
+    case "get_tweet_queue":
+      return getTweetQueue(toolInput as Parameters<typeof getTweetQueue>[0]);
+    case "delete_tweet":
+      return handleDeleteTweet(toolInput as Parameters<typeof handleDeleteTweet>[0]);
+    case "suggest_tweet_ideas":
+      return suggestTweetIdeas(toolInput as Parameters<typeof suggestTweetIdeas>[0]);
     default:
       return { success: false, error: `Unknown tool: ${toolName}` };
   }

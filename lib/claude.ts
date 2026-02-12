@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI, SchemaType, type FunctionDeclarationsTool } from "@google/generative-ai";
-import type { CalendarEvent } from "@/lib/types";
+import type { CalendarEvent, Tweet } from "@/lib/types";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -171,6 +171,128 @@ export const geminiTools: FunctionDeclarationsTool[] = [
           required: ["event_id"],
         },
       },
+      // --- Twitter tools ---
+      {
+        name: "draft_tweet",
+        description:
+          "Draft a new tweet. Optionally start a thread or schedule it for later.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            content: {
+              type: SchemaType.STRING,
+              description: "Tweet text (max 280 characters)",
+            },
+            thread: {
+              type: SchemaType.BOOLEAN,
+              description: "If true, creates the first tweet of a new thread",
+            },
+            schedule_at: {
+              type: SchemaType.STRING,
+              description: "Optional ISO 8601 datetime to schedule the tweet",
+            },
+          },
+          required: ["content"],
+        },
+      },
+      {
+        name: "add_thread_tweet",
+        description: "Add a new tweet to an existing thread.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            thread_id: {
+              type: SchemaType.STRING,
+              description: "UUID of the thread to append to",
+            },
+            content: {
+              type: SchemaType.STRING,
+              description: "Tweet text (max 280 characters)",
+            },
+          },
+          required: ["thread_id", "content"],
+        },
+      },
+      {
+        name: "schedule_tweet",
+        description: "Schedule an existing draft tweet for a specific time.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            tweet_id: {
+              type: SchemaType.STRING,
+              description: "UUID of the draft tweet to schedule",
+            },
+            scheduled_at: {
+              type: SchemaType.STRING,
+              description: "ISO 8601 datetime to schedule the tweet",
+            },
+          },
+          required: ["tweet_id", "scheduled_at"],
+        },
+      },
+      {
+        name: "post_tweet_now",
+        description:
+          "Post a draft or scheduled tweet to Twitter immediately. For threads, posts all tweets in the thread.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            tweet_id: {
+              type: SchemaType.STRING,
+              description: "UUID of the tweet to post",
+            },
+          },
+          required: ["tweet_id"],
+        },
+      },
+      {
+        name: "get_tweet_queue",
+        description:
+          "Get the current tweet queue. Optionally filter by status (draft, scheduled, posted).",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            status: {
+              type: SchemaType.STRING,
+              description: "Filter by status: draft, scheduled, posted, or failed",
+            },
+          },
+        },
+      },
+      {
+        name: "delete_tweet",
+        description:
+          "Delete a tweet from the queue. If already posted to Twitter, also deletes it from Twitter.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            tweet_id: {
+              type: SchemaType.STRING,
+              description: "UUID of the tweet to delete",
+            },
+          },
+          required: ["tweet_id"],
+        },
+      },
+      {
+        name: "suggest_tweet_ideas",
+        description:
+          "Suggest tweet ideas based on a topic. The AI will generate creative tweet suggestions.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            topic: {
+              type: SchemaType.STRING,
+              description: "Topic to generate tweet ideas about",
+            },
+            count: {
+              type: SchemaType.NUMBER,
+              description: "Number of suggestions to generate (default 3)",
+            },
+          },
+        },
+      },
     ],
   },
 ];
@@ -186,7 +308,8 @@ function formatTime(dateStr: string | null | undefined): string {
 
 export function buildSystemPrompt(
   todos: { id: string; title: string; priority: string; tags: string[]; due_date?: string; completed: boolean }[],
-  todayEvents: CalendarEvent[]
+  todayEvents: CalendarEvent[],
+  tweets?: Tweet[]
 ): string {
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-US", {
@@ -227,7 +350,20 @@ export function buildSystemPrompt(
           .join("\n")
       : "No todos.";
 
-  return `You are SignalOS, Steven's personal AI command center. You manage his calendar and todo list.
+  const tweetSection =
+    tweets && tweets.length > 0
+      ? tweets
+          .map((t) => {
+            const sched = t.scheduled_at
+              ? ` (scheduled: ${new Date(t.scheduled_at).toLocaleString()})`
+              : "";
+            const thread = t.thread_id ? ` [thread: ${t.thread_id}, #${t.thread_order}]` : "";
+            return `- [${t.status.toUpperCase()}] "${t.content}"${thread}${sched} (id: ${t.id})`;
+          })
+          .join("\n")
+      : "No tweets in queue.";
+
+  return `You are SignalOS, Steven's personal AI command center. You manage his calendar, todo list, and Twitter/X presence.
 
 ## User Context
 Steven is a CS student with lectures Tues/Thurs at 10am and 5pm. He works on a startup, takes Upwork gigs, and does DoorDash evenings. He wakes at 9am, sleeps at 1am.
@@ -241,12 +377,17 @@ ${agendaSection}
 ## Current Todo List
 ${todoSection}
 
+## Tweet Queue
+${tweetSection}
+
 ## Instructions
 - Auto-tag todos based on context (e.g. "meal prep" -> "personal", "leetcode" -> "school", "client project" -> "upwork").
 - Be concise. Prioritize actionable responses.
 - When adding todos, always infer appropriate tags and priority if the user doesn't specify.
 - When referring to existing todos, use their IDs from the list above.
-- For calendar operations, use ISO 8601 datetime format.`;
+- For calendar operations, use ISO 8601 datetime format.
+- Keep tweets under 280 characters. Auto-suggest relevant hashtags. Match Steven's voice: casual, technical, builder mindset.
+- When referring to existing tweets, use their IDs from the queue above.`;
 }
 
 export interface GeminiMessage {

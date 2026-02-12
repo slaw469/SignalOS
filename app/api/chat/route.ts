@@ -5,7 +5,7 @@ import type { GeminiMessage } from "@/lib/claude";
 import { executeTool } from "@/lib/tools";
 import { getCalendarEvents } from "@/lib/google-calendar";
 import { checkRateLimit, recordRequest } from "@/lib/rate-limit";
-import type { ToolCall, CalendarEvent } from "@/lib/types";
+import type { ToolCall, CalendarEvent, Tweet } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
   let body: { message?: string };
@@ -63,8 +63,21 @@ export async function POST(request: NextRequest) {
       // Google Calendar not connected yet — that's fine
     }
 
+    // 2b. Fetch tweet queue (drafts + scheduled) for context
+    let tweets: Tweet[] = [];
+    try {
+      const { data: tweetData } = await supabase
+        .from("tweets")
+        .select("*")
+        .in("status", ["draft", "scheduled"])
+        .order("created_at", { ascending: false });
+      tweets = (tweetData as Tweet[]) ?? [];
+    } catch {
+      // Tweet queue not available — that's fine
+    }
+
     // 3. Build system prompt with current context
-    const systemPrompt = buildSystemPrompt(todos ?? [], todayEvents);
+    const systemPrompt = buildSystemPrompt(todos ?? [], todayEvents, tweets);
 
     // 4. Load last 50 messages from supabase for conversation history
     const { data: messageHistory, error: historyError } = await supabase
