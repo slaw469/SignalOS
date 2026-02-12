@@ -1,177 +1,177 @@
-import Anthropic from "@anthropic-ai/sdk";
-import type { Tool, MessageParam, ContentBlock } from "@anthropic-ai/sdk/resources/messages";
+import { GoogleGenerativeAI, SchemaType, type FunctionDeclarationsTool } from "@google/generative-ai";
 import type { CalendarEvent } from "@/lib/types";
 
-const client = new Anthropic();
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-const MODEL = "claude-sonnet-4-5-20250929";
+const MODEL = "gemini-2.0-flash";
 
-export const tools: Tool[] = [
+export const geminiTools: FunctionDeclarationsTool[] = [
   {
-    name: "add_todo",
-    description:
-      "Add a new todo item. Auto-tag based on context (e.g. 'school', 'startup', 'personal', 'upwork', 'doordash').",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        title: { type: "string", description: "Title of the todo" },
-        description: {
-          type: "string",
-          description: "Optional description",
-        },
-        priority: {
-          type: "string",
-          enum: ["high", "medium", "low"],
-          description: "Priority level",
-        },
-        tags: {
-          type: "array",
-          items: { type: "string" },
-          description:
-            "Tags for categorization — auto-infer from context (e.g. 'school', 'startup', 'personal', 'upwork', 'doordash')",
-        },
-        due_date: {
-          type: "string",
-          description: "Optional due date in ISO 8601 format",
+    functionDeclarations: [
+      {
+        name: "add_todo",
+        description:
+          "Add a new todo item. Auto-tag based on context (e.g. 'school', 'startup', 'personal', 'upwork', 'doordash').",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            title: { type: SchemaType.STRING, description: "Title of the todo" },
+            description: { type: SchemaType.STRING, description: "Optional description" },
+            priority: {
+              type: SchemaType.STRING,
+              format: "enum",
+              enum: ["high", "medium", "low"],
+              description: "Priority level",
+            },
+            tags: {
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
+              description:
+                "Tags for categorization — auto-infer from context (e.g. 'school', 'startup', 'personal', 'upwork', 'doordash')",
+            },
+            due_date: {
+              type: SchemaType.STRING,
+              description: "Optional due date in ISO 8601 format",
+            },
+          },
+          required: ["title", "priority"],
         },
       },
-      required: ["title", "priority"],
-    },
-  },
-  {
-    name: "update_todo",
-    description: "Update an existing todo item by ID.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        todo_id: { type: "string", description: "UUID of the todo to update" },
-        title: { type: "string", description: "New title" },
-        priority: {
-          type: "string",
-          enum: ["high", "medium", "low"],
-          description: "New priority level",
-        },
-        tags: {
-          type: "array",
-          items: { type: "string" },
-          description: "New tags",
-        },
-        due_date: { type: "string", description: "New due date (ISO 8601)" },
-        completed: { type: "boolean", description: "Mark as completed or not" },
-      },
-      required: ["todo_id"],
-    },
-  },
-  {
-    name: "delete_todo",
-    description: "Delete a todo item by ID.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        todo_id: { type: "string", description: "UUID of the todo to delete" },
-      },
-      required: ["todo_id"],
-    },
-  },
-  {
-    name: "get_todos",
-    description:
-      "Get the current todo list with optional filters by tag, priority, or completion status.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        filter_tag: {
-          type: "string",
-          description: "Filter by tag (e.g. 'school', 'startup')",
-        },
-        filter_priority: {
-          type: "string",
-          enum: ["high", "medium", "low"],
-          description: "Filter by priority",
-        },
-        include_completed: {
-          type: "boolean",
-          description: "Include completed todos (default false)",
+      {
+        name: "update_todo",
+        description: "Update an existing todo item by ID.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            todo_id: { type: SchemaType.STRING, description: "UUID of the todo to update" },
+            title: { type: SchemaType.STRING, description: "New title" },
+            priority: {
+              type: SchemaType.STRING,
+              format: "enum",
+              enum: ["high", "medium", "low"],
+              description: "New priority level",
+            },
+            tags: {
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
+              description: "New tags",
+            },
+            due_date: { type: SchemaType.STRING, description: "New due date (ISO 8601)" },
+            completed: { type: SchemaType.BOOLEAN, description: "Mark as completed or not" },
+          },
+          required: ["todo_id"],
         },
       },
-      required: [],
-    },
-  },
-  {
-    name: "get_todays_agenda",
-    description:
-      "Get today's calendar events from Google Calendar. Returns a list of events with times, titles, and locations.",
-    input_schema: {
-      type: "object" as const,
-      properties: {},
-      required: [],
-    },
-  },
-  {
-    name: "get_week_agenda",
-    description:
-      "Get this week's calendar events from Google Calendar. Returns all events for the current week.",
-    input_schema: {
-      type: "object" as const,
-      properties: {},
-      required: [],
-    },
-  },
-  {
-    name: "create_calendar_event",
-    description: "Create a new event on Google Calendar.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        title: { type: "string", description: "Event title" },
-        start_time: {
-          type: "string",
-          description: "Start time in ISO 8601 format",
-        },
-        end_time: {
-          type: "string",
-          description: "End time in ISO 8601 format",
-        },
-        description: { type: "string", description: "Optional event description" },
-        location: { type: "string", description: "Optional event location" },
-      },
-      required: ["title", "start_time", "end_time"],
-    },
-  },
-  {
-    name: "update_calendar_event",
-    description: "Update an existing Google Calendar event by ID.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        event_id: {
-          type: "string",
-          description: "Google Calendar event ID",
-        },
-        title: { type: "string", description: "New event title" },
-        start_time: {
-          type: "string",
-          description: "New start time (ISO 8601)",
-        },
-        end_time: { type: "string", description: "New end time (ISO 8601)" },
-        description: { type: "string", description: "New event description" },
-      },
-      required: ["event_id"],
-    },
-  },
-  {
-    name: "delete_calendar_event",
-    description: "Delete a Google Calendar event by ID.",
-    input_schema: {
-      type: "object" as const,
-      properties: {
-        event_id: {
-          type: "string",
-          description: "Google Calendar event ID to delete",
+      {
+        name: "delete_todo",
+        description: "Delete a todo item by ID.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            todo_id: { type: SchemaType.STRING, description: "UUID of the todo to delete" },
+          },
+          required: ["todo_id"],
         },
       },
-      required: ["event_id"],
-    },
+      {
+        name: "get_todos",
+        description:
+          "Get the current todo list with optional filters by tag, priority, or completion status.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            filter_tag: {
+              type: SchemaType.STRING,
+              description: "Filter by tag (e.g. 'school', 'startup')",
+            },
+            filter_priority: {
+              type: SchemaType.STRING,
+              format: "enum",
+              enum: ["high", "medium", "low"],
+              description: "Filter by priority",
+            },
+            include_completed: {
+              type: SchemaType.BOOLEAN,
+              description: "Include completed todos (default false)",
+            },
+          },
+        },
+      },
+      {
+        name: "get_todays_agenda",
+        description:
+          "Get today's calendar events from Google Calendar. Returns a list of events with times, titles, and locations.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {},
+        },
+      },
+      {
+        name: "get_week_agenda",
+        description:
+          "Get this week's calendar events from Google Calendar. Returns all events for the current week.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {},
+        },
+      },
+      {
+        name: "create_calendar_event",
+        description: "Create a new event on Google Calendar.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            title: { type: SchemaType.STRING, description: "Event title" },
+            start_time: {
+              type: SchemaType.STRING,
+              description: "Start time in ISO 8601 format",
+            },
+            end_time: {
+              type: SchemaType.STRING,
+              description: "End time in ISO 8601 format",
+            },
+            description: { type: SchemaType.STRING, description: "Optional event description" },
+            location: { type: SchemaType.STRING, description: "Optional event location" },
+          },
+          required: ["title", "start_time", "end_time"],
+        },
+      },
+      {
+        name: "update_calendar_event",
+        description: "Update an existing Google Calendar event by ID.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            event_id: {
+              type: SchemaType.STRING,
+              description: "Google Calendar event ID",
+            },
+            title: { type: SchemaType.STRING, description: "New event title" },
+            start_time: {
+              type: SchemaType.STRING,
+              description: "New start time (ISO 8601)",
+            },
+            end_time: { type: SchemaType.STRING, description: "New end time (ISO 8601)" },
+            description: { type: SchemaType.STRING, description: "New event description" },
+          },
+          required: ["event_id"],
+        },
+      },
+      {
+        name: "delete_calendar_event",
+        description: "Delete a Google Calendar event by ID.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            event_id: {
+              type: SchemaType.STRING,
+              description: "Google Calendar event ID to delete",
+            },
+          },
+          required: ["event_id"],
+        },
+      },
+    ],
   },
 ];
 
@@ -249,19 +249,20 @@ ${todoSection}
 - For calendar operations, use ISO 8601 datetime format.`;
 }
 
-export async function sendMessage(
-  messages: MessageParam[],
-  systemPrompt: string
-): Promise<Anthropic.Messages.Message> {
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: 4096,
-    system: systemPrompt,
-    tools,
-    messages,
-  });
-
-  return response;
+export interface GeminiMessage {
+  role: "user" | "model";
+  parts: GeminiPart[];
 }
 
-export type { MessageParam, ContentBlock };
+export type GeminiPart =
+  | { text: string }
+  | { functionCall: { name: string; args: Record<string, unknown> } }
+  | { functionResponse: { name: string; response: Record<string, unknown> } };
+
+export function getModel(systemPrompt: string) {
+  return genAI.getGenerativeModel({
+    model: MODEL,
+    systemInstruction: systemPrompt,
+    tools: geminiTools,
+  });
+}

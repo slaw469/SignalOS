@@ -1,9 +1,10 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { supabase } from "@/lib/supabase";
 import { getCalendarEvents } from "@/lib/google-calendar";
 import type { CalendarEvent, Todo } from "@/lib/types";
 
-const MODEL = "claude-sonnet-4-5-20250929";
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+const MODEL = "gemini-2.0-flash";
 
 export function getTodayDateString(): string {
   const now = new Date();
@@ -92,16 +93,10 @@ ${todosText}
 
 Generate a concise morning briefing for Steven (2-3 sentences). Mention key events, top-priority tasks, and any scheduling notes. Be friendly but direct. Do not use bullet points — write it as a short paragraph.`;
 
-  // 4. Call Claude
-  const client = new Anthropic();
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: 300,
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const textBlock = response.content.find((block) => block.type === "text");
-  const content = textBlock && textBlock.type === "text" ? textBlock.text : "Good morning! Have a productive day.";
+  // 4. Call Gemini
+  const model = genAI.getGenerativeModel({ model: MODEL });
+  const result = await model.generateContent(prompt);
+  const content = result.response.text() || "Good morning! Have a productive day.";
 
   // 5. Upsert into briefings table
   const { error: upsertError } = await supabase
