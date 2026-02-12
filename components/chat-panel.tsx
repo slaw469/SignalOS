@@ -9,17 +9,8 @@ interface ChatPanelProps {
   onToolAction?: () => void;
 }
 
-const INITIAL_MESSAGES: Message[] = [
-  {
-    id: "1",
-    role: "assistant",
-    content:
-      "Good morning, Steven. You've got a solid day ahead. Your CS 301 lecture starts in 20 minutes \u2014 I've pulled last week's notes if you need a quick refresher.",
-  },
-];
-
 export function ChatPanel({ onToolAction }: ChatPanelProps) {
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [loaded, setLoaded] = useState(false);

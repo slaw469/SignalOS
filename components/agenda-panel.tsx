@@ -12,14 +12,6 @@ interface AgendaEvent {
   section: "Morning" | "Afternoon" | "Evening";
 }
 
-const MOCK_EVENTS: AgendaEvent[] = [
-  { hour: 7, time: "7:00", title: "Morning journaling", meta: "Personal ritual", dot: "dot-stone", section: "Morning" },
-  { hour: 10, time: "10:00", title: "CS 301 \u2014 Algorithms Lecture", meta: "Room 214, Whitman Hall", dot: "dot-sage", section: "Morning" },
-  { hour: 14, time: "2:00", title: "Startup standup", meta: "Zoom \u2014 Weekly sync w/ co-founders", dot: "dot-clay", section: "Afternoon" },
-  { hour: 16, time: "4:30", title: "Upwork client call", meta: "Review landing page mockups", dot: "dot-rose", section: "Afternoon" },
-  { hour: 18, time: "6:00", title: "DoorDash shift", meta: "Downtown zone \u2014 3 hr block", dot: "dot-stone", section: "Evening" },
-];
-
 const DOT_COLORS = ["dot-sage", "dot-clay", "dot-rose", "dot-stone"];
 
 function getSection(hour: number): "Morning" | "Afternoon" | "Evening" {
@@ -107,7 +99,7 @@ function EmptyAgenda() {
 export function AgendaPanel() {
   const [progress, setProgress] = useState(getDayProgress);
   const [nowHour, setNowHour] = useState(getNowHour);
-  const [events, setEvents] = useState<AgendaEvent[]>(MOCK_EVENTS);
+  const [events, setEvents] = useState<AgendaEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);

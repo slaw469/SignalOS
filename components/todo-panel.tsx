@@ -5,16 +5,6 @@ import { TodoItem } from "@/components/todo-item";
 import type { Todo } from "@/lib/types";
 import { Plus, X, Leaf } from "lucide-react";
 
-const MOCK_TODOS: Todo[] = [
-  { id: "1", title: "Finalize pitch deck for Friday's investor call", completed: false, tags: ["startup"], priority: "high" },
-  { id: "2", title: "Submit CS 301 problem set #4", completed: false, tags: ["school"], priority: "high" },
-  { id: "3", title: "Deliver responsive navbar for client project", completed: false, tags: ["upwork"], priority: "medium" },
-  { id: "4", title: "Renew gym membership", completed: true, tags: ["personal"], priority: "low" },
-  { id: "5", title: "Set up analytics tracking on landing page", completed: false, tags: ["startup"], priority: "medium" },
-  { id: "6", title: "Read chapters 7-8 for Thursday discussion", completed: false, tags: ["school"], priority: "low" },
-  { id: "7", title: "Meal prep for the week", completed: false, tags: ["personal"], priority: "low" },
-];
-
 const FILTERS = ["All", "Startup", "School", "Upwork", "Personal"] as const;
 
 function ShimmerTodos() {
@@ -50,7 +40,7 @@ function EmptyTodos() {
 }
 
 export function TodoPanel() {
-  const [todos, setTodos] = useState<Todo[]>(MOCK_TODOS);
+  const [todos, setTodos] = useState<Todo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("All");
   const [showAddForm, setShowAddForm] = useState(false);
