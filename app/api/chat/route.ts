@@ -4,6 +4,7 @@ import { buildSystemPrompt, getModel } from "@/lib/claude";
 import type { GeminiMessage } from "@/lib/claude";
 import { executeTool } from "@/lib/tools";
 import { getCalendarEvents } from "@/lib/google-calendar";
+import { checkRateLimit, recordRequest } from "@/lib/rate-limit";
 import type { ToolCall, CalendarEvent } from "@/lib/types";
 
 export async function POST(request: NextRequest) {
@@ -19,6 +20,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: "message is required and must be a string" },
       { status: 400 }
+    );
+  }
+
+  // Rate limit check
+  const limit = checkRateLimit();
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: limit.reason, remaining: limit.remaining },
+      { status: 429 }
     );
   }
 
@@ -89,10 +99,11 @@ export async function POST(request: NextRequest) {
 
     const allToolCalls: ToolCall[] = [];
     let finalTextResponse = "";
-    const MAX_TOOL_ITERATIONS = 10;
+    const MAX_TOOL_ITERATIONS = 5;
 
     // First message
     let result = await chat.sendMessage(userMessage);
+    recordRequest();
 
     for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
       const response = result.response;
@@ -138,6 +149,7 @@ export async function POST(request: NextRequest) {
 
       // Send function results back to Gemini
       result = await chat.sendMessage(functionResponses);
+      recordRequest();
 
       // Tool loop exhaustion
       if (i === MAX_TOOL_ITERATIONS - 1 && !finalTextResponse) {

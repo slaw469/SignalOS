@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { getTodayDateString, generateBriefing } from "@/lib/briefing";
+import { checkRateLimit, recordRequest } from "@/lib/rate-limit";
 
 export async function GET() {
   try {
@@ -24,7 +25,14 @@ export async function GET() {
     }
 
     // No briefing for today — generate one
+    const limit = checkRateLimit();
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { briefing: { date: today, content: "Briefing unavailable — rate limit reached. Try again later." } }
+      );
+    }
     const briefing = await generateBriefing();
+    recordRequest();
     return NextResponse.json({ briefing });
   } catch (err) {
     console.error("Briefing GET error:", err);
@@ -36,8 +44,13 @@ export async function GET() {
 }
 
 export async function POST() {
+  const limit = checkRateLimit();
+  if (!limit.allowed) {
+    return NextResponse.json({ error: limit.reason }, { status: 429 });
+  }
   try {
     const briefing = await generateBriefing();
+    recordRequest();
     return NextResponse.json({ briefing });
   } catch (err) {
     console.error("Briefing POST error:", err);
