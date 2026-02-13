@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Layers, Clock, MapPin } from "lucide-react";
 
 interface CalendarEvent {
   id: string;
@@ -19,6 +19,13 @@ interface CalendarOverlayProps {
 
 type ViewMode = "week" | "month";
 
+// Cluster of events that overlap in time
+interface EventCluster {
+  events: CalendarEvent[];
+  startMin: number; // earliest start in minutes since midnight
+  endMin: number;   // latest end in minutes since midnight
+}
+
 const DOT_COLORS = [
   "var(--sage-400)",
   "var(--ceramic-clay)",
@@ -26,6 +33,31 @@ const DOT_COLORS = [
   "var(--stone-400)",
   "var(--ceramic-warm)",
 ];
+
+// Opaque background colors that match the theme (no transparency bleed)
+const OPAQUE_BG_LIGHT: Record<string, string> = {
+  "var(--sage-400)": "#e8ede6",
+  "var(--ceramic-clay)": "#f0e4dc",
+  "var(--ceramic-rose)": "#f0e0e0",
+  "var(--stone-400)": "#e8e6e4",
+  "var(--ceramic-warm)": "#f0ead8",
+};
+
+const OPAQUE_BG_DARK: Record<string, string> = {
+  "var(--sage-400)": "#2a3228",
+  "var(--ceramic-clay)": "#342a24",
+  "var(--ceramic-rose)": "#342424",
+  "var(--stone-400)": "#2c2a28",
+  "var(--ceramic-warm)": "#34302a",
+};
+
+function getOpaqueBg(color: string): string {
+  // Check if dark mode
+  if (typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark") {
+    return OPAQUE_BG_DARK[color] ?? "#2a2a28";
+  }
+  return OPAQUE_BG_LIGHT[color] ?? "#e8e8e6";
+}
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 7); // 7am - 10pm
@@ -80,12 +112,119 @@ function getEventEndTime(ev: CalendarEvent): Date {
   return new Date(e);
 }
 
-function getEventMinutes(ev: CalendarEvent): { startMin: number; durationMin: number } {
+function getEventMinutes(ev: CalendarEvent): { startMin: number; endMin: number } {
   const s = getEventTime(ev);
   const e = getEventEndTime(ev);
   const startMin = s.getHours() * 60 + s.getMinutes();
-  const durationMin = Math.max(30, (e.getTime() - s.getTime()) / 60000);
-  return { startMin, durationMin };
+  const endMin = startMin + Math.max(30, (e.getTime() - s.getTime()) / 60000);
+  return { startMin, endMin };
+}
+
+// ─── Overlap Detection ──────────────────────────────────────────────────────
+
+function clusterOverlaps(dayEvents: CalendarEvent[]): EventCluster[] {
+  if (dayEvents.length === 0) return [];
+
+  // Sort by start time
+  const sorted = [...dayEvents].sort((a, b) => {
+    const aMin = getEventMinutes(a).startMin;
+    const bMin = getEventMinutes(b).startMin;
+    return aMin - bMin;
+  });
+
+  const clusters: EventCluster[] = [];
+  let currentCluster: EventCluster | null = null;
+
+  for (const ev of sorted) {
+    const { startMin, endMin } = getEventMinutes(ev);
+
+    if (!currentCluster || startMin >= currentCluster.endMin) {
+      // No overlap — start a new cluster
+      currentCluster = { events: [ev], startMin, endMin };
+      clusters.push(currentCluster);
+    } else {
+      // Overlaps with current cluster — merge in
+      currentCluster.events.push(ev);
+      currentCluster.endMin = Math.max(currentCluster.endMin, endMin);
+    }
+  }
+
+  return clusters;
+}
+
+// ─── Overlap Popover ────────────────────────────────────────────────────────
+
+function OverlapPopover({
+  cluster,
+  onClose,
+}: {
+  cluster: EventCluster;
+  onClose: () => void;
+}) {
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { e.stopPropagation(); onClose(); }
+    }
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [onClose]);
+
+  return (
+    <div className="cal-overlap-popover-backdrop">
+      <div ref={popoverRef} className="cal-overlap-popover">
+        <div className="cal-overlap-popover-header">
+          <div className="cal-overlap-popover-title">
+            <Layers size={14} />
+            <span>{cluster.events.length} Overlapping Events</span>
+          </div>
+          <button className="cal-overlap-popover-close" onClick={onClose}>
+            <X size={14} />
+          </button>
+        </div>
+        <ul className="cal-overlap-popover-list">
+          {cluster.events.map((ev, i) => {
+            const startDate = getEventTime(ev);
+            const endDate = getEventEndTime(ev);
+            const startStr = startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+            const endStr = endDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+            const color = DOT_COLORS[i % DOT_COLORS.length];
+            return (
+              <li key={ev.id ?? i} className="cal-overlap-popover-item">
+                <span className="cal-overlap-popover-accent" style={{ background: color }} />
+                <div className="cal-overlap-popover-content">
+                  <div className="cal-overlap-popover-event-title">
+                    {ev.summary ?? "Untitled"}
+                  </div>
+                  <div className="cal-overlap-popover-meta">
+                    <Clock size={11} />
+                    <span>{startStr} – {endStr}</span>
+                  </div>
+                  {ev.location && (
+                    <div className="cal-overlap-popover-meta">
+                      <MapPin size={11} />
+                      <span>{ev.location}</span>
+                    </div>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </div>
+  );
 }
 
 // ─── Week View ───────────────────────────────────────────────────────────────
@@ -95,6 +234,7 @@ function WeekView({ events, anchorDate }: { events: CalendarEvent[]; anchorDate:
   const today = new Date();
   const nowRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [expandedCluster, setExpandedCluster] = useState<EventCluster | null>(null);
 
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(start);
@@ -102,13 +242,11 @@ function WeekView({ events, anchorDate }: { events: CalendarEvent[]; anchorDate:
     return d;
   });
 
-  // Group events by day
-  const eventsByDay: CalendarEvent[][] = days.map((day) =>
-    events.filter((ev) => {
-      const evDate = getEventTime(ev);
-      return isSameDay(evDate, day);
-    })
-  );
+  // Group events by day, then cluster overlaps
+  const clustersByDay: EventCluster[][] = days.map((day) => {
+    const dayEvents = events.filter((ev) => isSameDay(getEventTime(ev), day));
+    return clusterOverlaps(dayEvents);
+  });
 
   // Scroll to current time on mount
   useEffect(() => {
@@ -170,33 +308,65 @@ function WeekView({ events, anchorDate }: { events: CalendarEvent[]; anchorDate:
               const isToday = isSameDay(day, today);
               return (
                 <div key={dayIdx} className={`cal-week-col${isToday ? " is-today" : ""}`}>
-                  {eventsByDay[dayIdx].map((ev, evIdx) => {
-                    const { startMin, durationMin } = getEventMinutes(ev);
-                    const topPct = ((startMin - 420) / (16 * 60)) * 100; // 420 = 7*60
+                  {clustersByDay[dayIdx].map((cluster, clIdx) => {
+                    const topPct = ((cluster.startMin - 420) / (16 * 60)) * 100;
+                    const durationMin = cluster.endMin - cluster.startMin;
                     const heightPct = (durationMin / (16 * 60)) * 100;
                     if (topPct < 0 || topPct > 100) return null;
-                    const color = DOT_COLORS[evIdx % DOT_COLORS.length];
-                    const startDate = getEventTime(ev);
-                    const timeStr = startDate.toLocaleTimeString("en-US", {
-                      hour: "numeric",
-                      minute: "2-digit",
-                      hour12: true,
-                    });
+
+                    // Single event — render normally with opaque bg
+                    if (cluster.events.length === 1) {
+                      const ev = cluster.events[0];
+                      const color = DOT_COLORS[clIdx % DOT_COLORS.length];
+                      const startDate = getEventTime(ev);
+                      const timeStr = startDate.toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: true,
+                      });
+                      return (
+                        <div
+                          key={ev.id ?? clIdx}
+                          className="cal-week-event"
+                          style={{
+                            top: `${topPct}%`,
+                            height: `${Math.max(heightPct, 2.5)}%`,
+                            borderLeftColor: color,
+                            background: getOpaqueBg(color),
+                          }}
+                          title={`${ev.summary ?? "Untitled"}\n${timeStr}${ev.location ? `\n${ev.location}` : ""}`}
+                        >
+                          <span className="cal-week-event-time">{timeStr}</span>
+                          <span className="cal-week-event-title">{ev.summary ?? "Untitled"}</span>
+                        </div>
+                      );
+                    }
+
+                    // Multiple overlapping events — render overlap block
                     return (
-                      <div
-                        key={ev.id ?? evIdx}
-                        className="cal-week-event"
+                      <button
+                        key={`overlap-${clIdx}`}
+                        className="cal-overlap-block"
                         style={{
                           top: `${topPct}%`,
-                          height: `${Math.max(heightPct, 2.5)}%`,
-                          borderLeftColor: color,
-                          background: `color-mix(in srgb, ${color} 12%, transparent)`,
+                          height: `${Math.max(heightPct, 4)}%`,
                         }}
-                        title={`${ev.summary ?? "Untitled"}\n${timeStr}${ev.location ? `\n${ev.location}` : ""}`}
+                        onClick={() => setExpandedCluster(cluster)}
                       >
-                        <span className="cal-week-event-time">{timeStr}</span>
-                        <span className="cal-week-event-title">{ev.summary ?? "Untitled"}</span>
-                      </div>
+                        <div className="cal-overlap-dots">
+                          {cluster.events.slice(0, 4).map((ev, i) => (
+                            <span
+                              key={ev.id ?? i}
+                              className="cal-overlap-dot"
+                              style={{ background: DOT_COLORS[i % DOT_COLORS.length] }}
+                            />
+                          ))}
+                        </div>
+                        <span className="cal-overlap-count">
+                          {cluster.events.length} overlapping
+                        </span>
+                        <span className="cal-overlap-hint">Click to expand</span>
+                      </button>
                     );
                   })}
                 </div>
@@ -205,6 +375,14 @@ function WeekView({ events, anchorDate }: { events: CalendarEvent[]; anchorDate:
           </div>
         </div>
       </div>
+
+      {/* Overlap expand popover */}
+      {expandedCluster && (
+        <OverlapPopover
+          cluster={expandedCluster}
+          onClose={() => setExpandedCluster(null)}
+        />
+      )}
     </div>
   );
 }
