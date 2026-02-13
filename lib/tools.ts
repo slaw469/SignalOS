@@ -383,10 +383,13 @@ async function postTweetViaPostiz(
 
     const postizResult = await postizCreatePost({
       type: "now",
+      date: new Date().toISOString(),
+      shortLink: false,
+      tags: [],
       posts: [
         {
           integration: { id: xIntegration.id },
-          value: [{ content: tweet.content as string }],
+          value: [{ content: tweet.content as string, image: [] }],
           settings: { __type: xIntegration.platform },
         },
       ],

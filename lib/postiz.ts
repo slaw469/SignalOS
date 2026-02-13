@@ -1,7 +1,8 @@
 // Postiz API client — lightweight hand-rolled fetch (no SDK)
 // Pattern follows lib/google-calendar.ts and lib/twitter.ts
 
-const POSTIZ_API_URL = process.env.POSTIZ_API_URL || "https://app.postiz.com/api/v1";
+// Base URL should point to {BACKEND_URL}/public/v1 per Postiz docs
+const POSTIZ_API_URL = process.env.POSTIZ_API_URL || "https://app.postiz.com/public/v1";
 const POSTIZ_API_KEY = process.env.POSTIZ_API_KEY || "";
 
 // --- Types ---
@@ -25,7 +26,7 @@ export interface PostizPostEntry {
 
 export interface PostizCreatePostRequest {
   type: "draft" | "schedule" | "now";
-  date?: string; // ISO 8601 for schedule
+  date: string; // ISO 8601 — required by API even for "now"
   shortLink?: boolean;
   tags?: string[];
   posts: PostizPostEntry[];
