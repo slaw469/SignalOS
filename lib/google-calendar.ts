@@ -74,8 +74,8 @@ export async function createCalendarEvent(
       summary: eventDetails.title,
       description: eventDetails.description,
       location: eventDetails.location,
-      start: { dateTime: eventDetails.start_time, timeZone: 'America/New_York' },
-      end: { dateTime: eventDetails.end_time, timeZone: 'America/New_York' },
+      start: { dateTime: eventDetails.start_time, timeZone: 'America/Chicago' },
+      end: { dateTime: eventDetails.end_time, timeZone: 'America/Chicago' },
     },
   });
   return res.data;
@@ -95,8 +95,8 @@ export async function updateCalendarEvent(
   const requestBody: calendar_v3.Schema$Event = {};
   if (updates.title !== undefined) requestBody.summary = updates.title;
   if (updates.description !== undefined) requestBody.description = updates.description;
-  if (updates.start_time !== undefined) requestBody.start = { dateTime: updates.start_time, timeZone: 'America/New_York' };
-  if (updates.end_time !== undefined) requestBody.end = { dateTime: updates.end_time, timeZone: 'America/New_York' };
+  if (updates.start_time !== undefined) requestBody.start = { dateTime: updates.start_time, timeZone: 'America/Chicago' };
+  if (updates.end_time !== undefined) requestBody.end = { dateTime: updates.end_time, timeZone: 'America/Chicago' };
 
   const res = await calendar.events.patch({
     calendarId: "primary",

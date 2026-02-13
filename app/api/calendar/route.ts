@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
   const endParam = searchParams.get("end");
 
   // Calculate "today" in user's timezone to avoid UTC offset issues on Vercel
-  const userTz = "America/New_York";
+  const userTz = "America/Chicago";
   const now = new Date();
   const todayStr = now.toLocaleDateString("en-CA", { timeZone: userTz }); // "YYYY-MM-DD"
   // Build midnight-to-midnight in user's timezone via toLocaleString round-trip
