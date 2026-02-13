@@ -3,7 +3,7 @@
  * Enforces both per-minute and daily caps to prevent billing surprises.
  */
 
-const DAILY_LIMIT = parseInt(process.env.GEMINI_DAILY_LIMIT || "100", 10);
+const DAILY_LIMIT = parseInt(process.env.GEMINI_DAILY_LIMIT || "50", 10);
 const RPM_LIMIT = parseInt(process.env.GEMINI_RPM_LIMIT || "10", 10);
 
 interface RateLimitState {

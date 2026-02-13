@@ -42,6 +42,10 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
   // Delete confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Posting state
+  const [postingId, setPostingId] = useState<string | null>(null);
+  const [postError, setPostError] = useState<string | null>(null);
+
   const fetchTweets = useCallback(async () => {
     try {
       const res = await fetch("/api/tweets");
@@ -115,6 +119,8 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
 
   // Actions
   const handlePostNow = async (tweetId: string) => {
+    setPostingId(tweetId);
+    setPostError(null);
     try {
       const res = await fetch("/api/tweets/post", {
         method: "POST",
@@ -125,9 +131,14 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
         await fetchTweets();
         await fetchRateLimit();
         onRefresh?.();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setPostError(data.error || `Failed to post (${res.status})`);
       }
     } catch {
-      // ignore
+      setPostError("Network error — could not reach server.");
+    } finally {
+      setPostingId(null);
     }
   };
 
@@ -549,8 +560,12 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
                       </div>
                       <div style={{ display: "flex", gap: 4, flexShrink: 0, alignItems: "flex-start" }}>
                         {tweet.status === "draft" && (
-                          <button className="tweet-action-btn post" onClick={() => handlePostNow(tweet.id)}>
-                            <Send size={12} /> Post
+                          <button
+                            className="tweet-action-btn post"
+                            onClick={() => handlePostNow(tweet.id)}
+                            disabled={postingId === tweet.id}
+                          >
+                            <Send size={12} /> {postingId === tweet.id ? "Posting..." : "Post"}
                           </button>
                         )}
                         <button className="tweet-action-btn" onClick={() => handleEdit(tweet)}>
@@ -576,6 +591,22 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
                 </div>
               );
             })}
+
+            {/* Post error */}
+            {postError && (
+              <div
+                style={{
+                  margin: "8px 0",
+                  padding: "8px 12px",
+                  fontSize: "0.78rem",
+                  color: "#b45858",
+                  background: "rgba(180, 88, 88, 0.08)",
+                  borderRadius: 8,
+                }}
+              >
+                {postError}
+              </div>
+            )}
 
             {/* Rate limit */}
             <div

@@ -71,8 +71,9 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
         body: JSON.stringify({ message: text }),
       });
 
+      const data = await res.json();
+
       if (res.ok) {
-        const data = await res.json();
         const aiMsg: Message = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
@@ -85,10 +86,13 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
           onToolAction();
         }
       } else {
+        const errorText = res.status === 429
+          ? `Rate limit reached: ${data.error || "Too many requests. Please wait before trying again."}`
+          : data.error || "Something went wrong. Please try again.";
         const aiMsg: Message = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: "Something went wrong. Please try again.",
+          content: errorText,
           isError: true,
         };
         setMessages((prev) => [...prev, aiMsg]);

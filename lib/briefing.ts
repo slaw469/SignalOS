@@ -133,9 +133,7 @@ ${todosText}
 ## Tweet Queue
 ${tweetsText}
 
-Generate a concise morning briefing for Steven (2-3 sentences). Mention key events, top-priority tasks, and any scheduling notes. Be friendly but direct. Do not use bullet points — write it as a short paragraph.
-
-Then, under a "Tweet ideas" heading, suggest 2-3 tweet ideas based on what Steven is working on today. Keep them casual and authentic. Each tweet idea should be under 280 characters.`;
+Generate a concise morning briefing for Steven (2-3 sentences max). Mention the most important events and top-priority tasks only. Be friendly but direct. Do not use bullet points, headings, hashtags, or tweet ideas — write it as one short paragraph.`;
 
   // 5. Call Gemini
   const model = genAI.getGenerativeModel({ model: MODEL });

@@ -40,9 +40,11 @@ export default function Home() {
     setIsRefreshingBriefing(true);
     try {
       const res = await fetch("/api/briefing", { method: "POST" });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
         setBriefing(data.briefing?.content ?? FALLBACK_BRIEFING);
+      } else if (res.status === 429) {
+        setBriefing(`Rate limit reached: ${data.error || "Too many requests. Please wait before trying again."}`);
       }
     } catch {
       // keep existing briefing on error
