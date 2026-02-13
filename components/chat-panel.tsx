@@ -15,10 +15,13 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
   const [isTyping, setIsTyping] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatMessagesRef = useRef<HTMLDivElement>(null);
 
   function scrollToBottom() {
     requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      if (chatMessagesRef.current) {
+        chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+      }
     });
   }
 
@@ -161,7 +164,7 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
         </div>
       </div>
       <div className="panel-body">
-        <div className="chat-messages" role="log" aria-live="polite">
+        <div ref={chatMessagesRef} className="chat-messages" role="log" aria-live="polite">
           {messages.map((msg) => (
             <ChatMessage key={msg.id} role={msg.role} content={msg.content} isError={msg.isError} />
           ))}

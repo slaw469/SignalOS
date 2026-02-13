@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, ChevronDown, ChevronUp, Maximize2 } from "lucide-react";
+import { CalendarOverlay } from "@/components/calendar-overlay";
 
 interface AgendaEvent {
   id: string;
@@ -132,6 +133,7 @@ export function AgendaPanel() {
   const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const nowEventRef = useRef<HTMLLIElement>(null);
@@ -275,9 +277,33 @@ export function AgendaPanel() {
     >
       <div className="panel-header">
         <span className="panel-title">Agenda</span>
-        <span className="panel-badge">
-          {isLoading ? "loading..." : `${events.length} events`}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="panel-badge">
+            {isLoading ? "loading..." : `${events.length} events`}
+          </span>
+          {calendarConnected !== false && (
+            <button
+              onClick={() => setCalendarOpen(true)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--ink-muted)",
+                cursor: "pointer",
+                padding: 4,
+                borderRadius: 6,
+                display: "flex",
+                alignItems: "center",
+                transition: "color 0.2s ease",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "var(--ink)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = "var(--ink-muted)"; }}
+              aria-label="Expand calendar"
+              title="Open full calendar"
+            >
+              <Maximize2 size={14} />
+            </button>
+          )}
+        </div>
       </div>
       <div className="panel-body" style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Day Progress Ring */}
@@ -434,6 +460,8 @@ export function AgendaPanel() {
 
         <p className="breath-text">The day holds space for you</p>
       </div>
+
+      <CalendarOverlay open={calendarOpen} onClose={() => setCalendarOpen(false)} />
     </section>
   );
 }
