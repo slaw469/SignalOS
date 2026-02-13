@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { ChatMessage } from "@/components/chat-message";
-import { Send } from "lucide-react";
+import { Send, RotateCcw } from "lucide-react";
 import type { Message } from "@/lib/types";
 
 interface ChatPanelProps {
@@ -120,7 +120,7 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
   return (
     <section
       className="glass chat-panel flex flex-col"
-      aria-label="Chat with Claude"
+      aria-label="Chat with Signal"
       style={{
         overflow: "hidden",
         minHeight: 420,
@@ -130,8 +130,35 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
       }}
     >
       <div className="panel-header">
-        <span className="panel-title">Claude</span>
-        <span className="panel-badge">{loaded ? "AI assistant" : "loading..."}</span>
+        <span className="panel-title">Signal</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="panel-badge">{loaded ? "AI assistant" : "loading..."}</span>
+          {messages.length > 0 && (
+            <button
+              onClick={async () => {
+                try {
+                  await fetch("/api/messages", { method: "DELETE" });
+                } catch { /* ignore */ }
+                setMessages([]);
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--ink-muted)",
+                cursor: "pointer",
+                padding: 4,
+                borderRadius: 6,
+                display: "flex",
+                alignItems: "center",
+                transition: "color 0.2s ease",
+              }}
+              aria-label="Clear chat"
+              title="New conversation"
+            >
+              <RotateCcw size={13} />
+            </button>
+          )}
+        </div>
       </div>
       <div className="panel-body">
         <div className="chat-messages" role="log" aria-live="polite">
@@ -139,7 +166,7 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
             <ChatMessage key={msg.id} role={msg.role} content={msg.content} isError={msg.isError} />
           ))}
           {isTyping && (
-            <div className="typing-indicator visible" role="status" aria-label="Claude is typing">
+            <div className="typing-indicator visible" role="status" aria-label="Signal is typing">
               <span className="typing-dot" />
               <span className="typing-dot" />
               <span className="typing-dot" />
@@ -151,7 +178,7 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
           <input
             type="text"
             className="chat-input"
-            placeholder="Ask Claude anything..."
+            placeholder="Ask Signal anything..."
             aria-label="Type a message"
             value={input}
             onChange={(e) => setInput(e.target.value)}

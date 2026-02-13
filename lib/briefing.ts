@@ -122,18 +122,13 @@ export async function generateBriefing(): Promise<{ date: string; content: strin
 
   const prompt = `Today is ${dateLabel}.
 
-Here is Steven's schedule and tasks:
-
 ## Today's Calendar
 ${eventsText}
 
 ## Open Todos
 ${todosText}
 
-## Tweet Queue
-${tweetsText}
-
-Generate a concise morning briefing for Steven (2-3 sentences max). Mention the most important events and top-priority tasks only. Be friendly but direct. Do not use bullet points, headings, hashtags, or tweet ideas — write it as one short paragraph.`;
+Write a 1-2 sentence briefing for Steven. Mention his next event and top urgent tasks only. Be casual and direct. STRICT RULES: No bullet points. No headings. No hashtags. No tweet ideas. No asterisks or markdown. Just plain text, 1-2 short sentences max.`;
 
   // 5. Call Gemini
   const model = genAI.getGenerativeModel({ model: MODEL });

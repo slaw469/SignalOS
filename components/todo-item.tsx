@@ -9,25 +9,30 @@ interface TodoItemProps {
   onDelete: (id: string) => void;
 }
 
-function formatDueDate(dateStr: string): string {
-  const due = new Date(dateStr + "T00:00:00");
+function parseDueDate(dateStr: string): Date {
+  // Handle both "2026-02-24" and "2026-02-24T00:00:00.000Z" formats
+  const dateOnly = dateStr.split("T")[0];
+  const [y, m, d] = dateOnly.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function getDaysDiff(dateStr: string): number {
+  const due = parseDueDate(dateStr);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diff = Math.floor((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  return Math.floor((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
 
+function formatDueDate(dateStr: string): string {
+  const diff = getDaysDiff(dateStr);
   if (diff < 0) return "Overdue";
   if (diff === 0) return "Today";
   if (diff === 1) return "Tomorrow";
-
-  return due.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return parseDueDate(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 function getDueDateClass(dateStr: string): string {
-  const due = new Date(dateStr + "T00:00:00");
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diff = Math.floor((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
+  const diff = getDaysDiff(dateStr);
   if (diff < 0) return "due-date overdue";
   if (diff <= 1) return "due-date urgent";
   if (diff <= 3) return "due-date soon";
