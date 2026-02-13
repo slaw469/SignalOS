@@ -3,14 +3,21 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
+function getThemeFromDOM(): "light" | "dark" {
+  if (typeof document === "undefined") return "light";
+  return document.documentElement.getAttribute("data-theme") === "dark"
+    ? "dark"
+    : "light";
+}
+
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<"light" | "dark">(getThemeFromDOM);
 
   useEffect(() => {
-    const current = document.documentElement.getAttribute("data-theme");
-    if (current === "dark") {
-      setTheme("dark");
-      document.documentElement.classList.add("dark");
+    // Sync with what the head script already set
+    const current = getThemeFromDOM();
+    if (current !== theme) {
+      setTheme(current);
     }
   }, []);
 
