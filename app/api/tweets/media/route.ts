@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { getTwitterClientV1 } from "@/lib/twitter";
+import { getAuthenticatedTwitterClient, uploadMedia } from "@/lib/twitter";
 
 const ALLOWED_TYPES = [
   "image/jpeg",
@@ -43,13 +43,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get authenticated OAuth 2.0 client (media.write scope required)
+    const client = await getAuthenticatedTwitterClient();
+    if (!client) {
+      return NextResponse.json(
+        { error: "Twitter not connected. Please authenticate first." },
+        { status: 401 }
+      );
+    }
+
     // Convert file to buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload to Twitter using V1 API (OAuth 1.0a required for media uploads)
-    const client = getTwitterClientV1();
-    const mediaId = await client.v1.uploadMedia(buffer, { mimeType: file.type });
+    // Upload to Twitter using v2 media upload (OAuth 2.0)
+    const mediaId = await uploadMedia(client, buffer, file.type);
 
     // If a tweet_id was provided, attach the media_id to the tweet
     if (tweetId) {

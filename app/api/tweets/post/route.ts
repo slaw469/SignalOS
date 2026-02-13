@@ -34,9 +34,9 @@ export async function POST(request: NextRequest) {
     .eq("month", currentMonth)
     .single();
 
-  if (rateLimit && rateLimit.tweets_posted >= 1500) {
+  if (rateLimit && rateLimit.tweets_posted >= 1400) {
     return NextResponse.json(
-      { error: "Monthly tweet limit reached (1,500). Try again next month." },
+      { error: "Monthly tweet limit reached (safety cap 1,400 of 1,500). Try again next month." },
       { status: 429 }
     );
   }

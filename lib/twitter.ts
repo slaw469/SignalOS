@@ -6,7 +6,7 @@ const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET || "";
 const TWITTER_REDIRECT_URI =
   process.env.TWITTER_REDIRECT_URI || "http://localhost:8008/auth/twitter/callback";
 
-const SCOPES = ["tweet.read", "tweet.write", "users.read", "offline.access"];
+const SCOPES = ["tweet.read", "tweet.write", "users.read", "media.write", "offline.access"];
 
 // --- OAuth 2.0 with PKCE ---
 
@@ -103,7 +103,9 @@ export async function uploadMedia(
   imageBuffer: Buffer,
   mimeType: string
 ): Promise<string> {
-  return client.v1.uploadMedia(imageBuffer, { mimeType });
+  // Use v2 media upload (OAuth 2.0 with media.write scope)
+  const mediaId = await client.v2.uploadMedia(imageBuffer, { media_type: mimeType });
+  return mediaId;
 }
 
 // --- Token helpers ---
@@ -134,17 +136,15 @@ export async function getAuthenticatedTwitterClient(): Promise<TwitterApi | null
   const { accessToken, refreshToken } = await getStoredTwitterTokens();
   if (!accessToken) return null;
 
-  try {
-    const client = getTwitterClient(accessToken);
-    // Test the client with a lightweight call
-    await client.v2.me();
-    return client;
-  } catch {
-    // Token may be expired, try refreshing
-    if (!refreshToken) return null;
+  // Return the client directly — no v2.me() health check (requires users.read
+  // which fails on Free tier). If the token is expired, the first real API call
+  // will fail and callers handle that error.
+  const client = getTwitterClient(accessToken);
+
+  // Proactively refresh if we have a refresh token (best-effort, non-blocking)
+  if (refreshToken) {
     try {
       const refreshed = await refreshTwitterToken(refreshToken);
-      // Store the new tokens
       await supabase.from("settings").upsert(
         { key: "twitter_access_token", value: refreshed.accessToken, updated_at: new Date().toISOString() },
         { onConflict: "key" }
@@ -157,9 +157,13 @@ export async function getAuthenticatedTwitterClient(): Promise<TwitterApi | null
       }
       return refreshed.client;
     } catch {
-      return null;
+      // Refresh failed — return the original client and let the caller
+      // handle any auth errors from the actual API call
+      return client;
     }
   }
+
+  return client;
 }
 
 // --- Smart scheduling ---

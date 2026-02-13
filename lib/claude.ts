@@ -293,6 +293,50 @@ export const geminiTools: FunctionDeclarationsTool[] = [
           },
         },
       },
+      // --- Cross-platform formatting tool ---
+      {
+        name: "format_content_for_platforms",
+        description:
+          "Format content for multiple social media platforms. Returns platform-specific formatting instructions that respect each platform's character limits, tone, and hashtag conventions.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            content: {
+              type: SchemaType.STRING,
+              description: "The content to format for social platforms",
+            },
+            platforms: {
+              type: SchemaType.ARRAY,
+              items: { type: SchemaType.STRING },
+              description:
+                "Target platforms (x, linkedin, bluesky, mastodon, threads). Defaults to all if omitted.",
+            },
+            content_type: {
+              type: SchemaType.STRING,
+              format: "enum",
+              enum: [
+                "announcement",
+                "build_update",
+                "thought_leadership",
+                "link_share",
+                "question",
+                "thread",
+                "personal",
+              ],
+              description: "Type of content being shared",
+            },
+            url: {
+              type: SchemaType.STRING,
+              description: "Optional URL to include in the formatted content",
+            },
+            include_hashtags: {
+              type: SchemaType.BOOLEAN,
+              description: "Whether to include hashtags (default true)",
+            },
+          },
+          required: ["content"],
+        },
+      },
     ],
   },
 ];
@@ -390,7 +434,15 @@ ${tweetSection}
 - When referring to existing todos in tool calls, use their IDs from the list above — but never show IDs to Steven.
 - For calendar operations, use ISO 8601 datetime format.
 - Keep tweets under 280 characters. Auto-suggest relevant hashtags. Match Steven's voice: casual, technical, builder mindset.
-- When referring to existing tweets in tool calls, use their IDs from the queue above — but never show IDs to Steven.`;
+- When referring to existing tweets in tool calls, use their IDs from the queue above — but never show IDs to Steven.
+
+## Cross-Platform Formatting Rules
+When formatting content for social media, follow these platform-specific rules:
+- **X/Twitter**: 280 chars max. Casual, punchy. 1-3 inline hashtags woven naturally into text.
+- **LinkedIn**: 3,000 chars max. Professional but personable. 3 hashtags at bottom. Say "link in comments" instead of pasting URLs in the post body.
+- **Bluesky**: 300 graphemes max. Genuine, conversational — no corporate speak. 1-3 niche/community hashtags.
+- **Mastodon**: 500 chars max. Thoughtful, inclusive tone. 2-5 CamelCase hashtags (e.g. #WebDev, #OpenSource). Always expect alt text for images.
+- **Threads**: 500 chars max. Casual, Instagram-adjacent vibe. 0-1 hashtags max. Conversational, like a quick thought drop.`;
 }
 
 export interface GeminiMessage {

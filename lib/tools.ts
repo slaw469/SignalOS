@@ -11,6 +11,12 @@ import {
   postThread as twitterPostThread,
   deleteTweet as twitterDeleteTweet,
 } from "@/lib/twitter";
+import {
+  createPost as postizCreatePost,
+  getIntegrations as postizGetIntegrations,
+} from "@/lib/postiz";
+
+const POSTING_BACKEND = process.env.POSTING_BACKEND || "direct"; // "postiz" | "direct"
 
 interface ToolResult {
   success: boolean;
@@ -346,6 +352,77 @@ async function postTweetNow(input: { tweet_id: string }): Promise<ToolResult> {
     return { success: false, error: `Tweet is already ${tweet.status}` };
   }
 
+  // Route to Postiz or direct Twitter based on POSTING_BACKEND env var
+  if (POSTING_BACKEND === "postiz") {
+    return postTweetViaPostiz(tweet, input.tweet_id);
+  }
+  return postTweetDirect(tweet, input.tweet_id);
+}
+
+// --- Postiz posting path ---
+
+async function postTweetViaPostiz(
+  tweet: Record<string, unknown>,
+  tweetId: string
+): Promise<ToolResult> {
+  try {
+    // Find the X/Twitter integration in Postiz
+    const integrations = await postizGetIntegrations();
+    const xIntegration = integrations.find(
+      (i) => i.platform === "x" || i.platform === "twitter"
+    );
+    if (!xIntegration) {
+      return { success: false, error: "No X/Twitter integration found in Postiz. Add one first." };
+    }
+
+    const postizResult = await postizCreatePost({
+      type: "now",
+      posts: [
+        {
+          integration: { id: xIntegration.id },
+          value: [{ content: tweet.content as string }],
+          settings: { __type: xIntegration.platform },
+        },
+      ],
+    });
+
+    const now = new Date().toISOString();
+    await supabase
+      .from("tweets")
+      .update({
+        status: "posted",
+        postiz_post_id: postizResult.id,
+        postiz_state: postizResult.state,
+        postiz_synced_at: now,
+        posted_at: now,
+        updated_at: now,
+      })
+      .eq("id", tweetId);
+
+    return { success: true, data: { posted: 1, postiz_post_id: postizResult.id } };
+  } catch (err) {
+    await supabase
+      .from("tweets")
+      .update({
+        status: "failed",
+        error: err instanceof Error ? err.message : String(err),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", tweetId);
+
+    return {
+      success: false,
+      error: `Failed to post via Postiz: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+// --- Direct Twitter posting path (fallback) ---
+
+async function postTweetDirect(
+  tweet: Record<string, unknown>,
+  tweetId: string
+): Promise<ToolResult> {
   const client = await getAuthenticatedTwitterClient();
   if (!client) return { success: false, error: TWITTER_NOT_CONNECTED };
 
@@ -356,7 +433,7 @@ async function postTweetNow(input: { tweet_id: string }): Promise<ToolResult> {
       const { data: threadTweets, error: threadError } = await supabase
         .from("tweets")
         .select("*")
-        .eq("thread_id", tweet.thread_id)
+        .eq("thread_id", tweet.thread_id as string)
         .order("thread_order", { ascending: true });
 
       if (threadError) return { success: false, error: threadError.message };
@@ -384,7 +461,7 @@ async function postTweetNow(input: { tweet_id: string }): Promise<ToolResult> {
       return { success: true, data: { posted: threadTweets.length, thread_id: tweet.thread_id } };
     } else {
       // Single tweet
-      const result = await twitterPostTweet(client, tweet.content);
+      const result = await twitterPostTweet(client, tweet.content as string);
       const twitterId = result?.data?.id ?? null;
 
       await supabase
@@ -395,7 +472,7 @@ async function postTweetNow(input: { tweet_id: string }): Promise<ToolResult> {
           posted_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq("id", input.tweet_id);
+        .eq("id", tweetId);
 
       return { success: true, data: { posted: 1, twitter_id: twitterId } };
     }
@@ -408,7 +485,7 @@ async function postTweetNow(input: { tweet_id: string }): Promise<ToolResult> {
         error: err instanceof Error ? err.message : String(err),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", input.tweet_id);
+      .eq("id", tweetId);
 
     return {
       success: false,
@@ -480,6 +557,55 @@ async function suggestTweetIdeas(input: {
   };
 }
 
+// --- Cross-platform content formatting handler ---
+
+type ContentType = "announcement" | "build_update" | "thought_leadership" | "link_share" | "question" | "thread" | "personal";
+
+const PLATFORM_RULES: Record<string, string> = {
+  x: "X/Twitter: Max 280 characters. Casual, punchy tone. 1-3 inline hashtags woven naturally into the text. Short sentences. Use line breaks for emphasis.",
+  linkedin: "LinkedIn: Max 3,000 characters. Professional but personable. Open with a hook. 3 hashtags at the bottom separated from the body. If sharing a link, say 'link in comments' and don't put the URL in the post body.",
+  bluesky: "Bluesky: Max 300 graphemes. Genuine, conversational tone — no corporate speak. 1-3 niche/community hashtags. Feels like talking to a friend who gets it.",
+  mastodon: "Mastodon: Max 500 characters. Thoughtful, inclusive tone. 2-5 CamelCase hashtags (e.g. #WebDev, #OpenSource). Always include alt text descriptions for images. Content warnings where appropriate.",
+  threads: "Threads: Max 500 characters. Casual, Instagram-adjacent vibe. 0-1 hashtags max. Conversational, like a quick thought drop. Emojis OK but not overdone.",
+};
+
+async function formatContentForPlatforms(input: {
+  content: string;
+  platforms?: string[];
+  content_type?: ContentType;
+  url?: string;
+  include_hashtags?: boolean;
+}): Promise<ToolResult> {
+  const platforms = input.platforms ?? ["x", "linkedin", "bluesky", "mastodon", "threads"];
+  const includeHashtags = input.include_hashtags ?? true;
+  const contentType = input.content_type ?? "announcement";
+
+  const rules = platforms
+    .map((p) => PLATFORM_RULES[p])
+    .filter(Boolean)
+    .join("\n\n");
+
+  const instructions = [
+    `Reformat the following content for each platform. Content type: ${contentType}.`,
+    rules,
+    includeHashtags ? "Include platform-appropriate hashtags." : "Do NOT include any hashtags.",
+    input.url ? `Include this URL where appropriate: ${input.url}` : "",
+    "Return each platform version clearly labeled.",
+    `\nOriginal content:\n${input.content}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
+  return {
+    success: true,
+    data: {
+      formatting_instructions: instructions,
+      platforms,
+      content_type: contentType,
+    },
+  };
+}
+
 // --- Main Router ---
 
 export async function executeTool(
@@ -525,6 +651,10 @@ export async function executeTool(
       return handleDeleteTweet(toolInput as Parameters<typeof handleDeleteTweet>[0]);
     case "suggest_tweet_ideas":
       return suggestTweetIdeas(toolInput as Parameters<typeof suggestTweetIdeas>[0]);
+    case "format_content_for_platforms":
+      return formatContentForPlatforms(
+        toolInput as Parameters<typeof formatContentForPlatforms>[0]
+      );
     default:
       return { success: false, error: `Unknown tool: ${toolName}` };
   }

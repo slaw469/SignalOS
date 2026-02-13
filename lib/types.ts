@@ -50,6 +50,8 @@ export interface Setting {
 
 export type TweetStatus = "draft" | "scheduled" | "posting" | "posted" | "failed";
 
+export type SocialPlatform = "x" | "bluesky" | "linkedin" | "mastodon" | "threads";
+
 export interface Tweet {
   id: string;
   content: string;
@@ -62,6 +64,19 @@ export interface Tweet {
   twitter_id: string | null;
   error: string | null;
   recurring_rule: string | null;
+  platform: SocialPlatform;
+  postiz_post_id: string | null;
+  postiz_state: string | null;
+  postiz_synced_at: string | null;
   created_at: string;
   updated_at: string;
 }
+
+/*
+ * Migration SQL — add Postiz columns to tweets table:
+ *
+ * ALTER TABLE tweets ADD COLUMN platform TEXT DEFAULT 'x';
+ * ALTER TABLE tweets ADD COLUMN postiz_post_id TEXT;
+ * ALTER TABLE tweets ADD COLUMN postiz_state TEXT;
+ * ALTER TABLE tweets ADD COLUMN postiz_synced_at TIMESTAMPTZ;
+ */
