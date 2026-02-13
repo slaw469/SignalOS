@@ -123,7 +123,7 @@ export function ChatPanel({ onToolAction }: ChatPanelProps) {
       aria-label="Chat with Signal"
       style={{
         overflow: "hidden",
-        minHeight: 420,
+        height: 520,
         opacity: 0,
         transform: "translateY(20px)",
         animation: "fadeUp 0.7s var(--ease-out) 0.55s forwards",

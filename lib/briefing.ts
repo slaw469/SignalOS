@@ -128,7 +128,7 @@ ${eventsText}
 ## Open Todos
 ${todosText}
 
-Write a 1-2 sentence briefing for Steven. Mention his next event and top urgent tasks only. Be casual and direct. STRICT RULES: No bullet points. No headings. No hashtags. No tweet ideas. No asterisks or markdown. Just plain text, 1-2 short sentences max.`;
+Write a single short sentence briefing for Steven under 100 characters. Mention only his next event or top task. STRICT RULES: Must be under 100 characters total. No bullet points. No headings. No hashtags. No tweet ideas. No asterisks or markdown. One plain text sentence, max 100 characters.`;
 
   // 5. Call Gemini
   const model = genAI.getGenerativeModel({ model: MODEL });

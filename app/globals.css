@@ -905,7 +905,9 @@ body {
 /* ---------- Chat Panel ---------- */
 .chat-panel .panel-body {
   padding: 0;
-  height: 420px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
 }
 
 .chat-messages {
@@ -1597,7 +1599,7 @@ body {
   .panels-grid { grid-template-columns: 1fr 1fr !important; }
   .panels-grid > :nth-child(3) { grid-column: 1 / -1; }
   .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .chat-panel .panel-body { height: 360px; }
+  .chat-panel { height: 420px; }
 }
 
 @media (max-width: 700px) {
