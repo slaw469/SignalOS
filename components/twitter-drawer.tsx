@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { ChevronDown, ChevronUp, Send, Trash2, Edit3, Link, Plus, Clock, Sparkles, Calendar } from "lucide-react";
-import type { Tweet } from "@/lib/types";
+import type { Tweet, SocialPlatform } from "@/lib/types";
 
 type Tab = "queue" | "compose" | "posted";
+type PlatformFilter = "all" | "x" | "bluesky";
+type PostTarget = "x" | "bluesky" | "both";
 
 function XIcon({ size = 16 }: { size?: number }) {
   return (
@@ -14,16 +16,64 @@ function XIcon({ size = 16 }: { size?: number }) {
   );
 }
 
-interface TwitterDrawerProps {
+function BlueskyIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 600 530" fill="currentColor">
+      <path d="M135.72 44.03C202.216 93.951 273.74 195.17 300 249.49c26.262-54.316 97.782-155.54 164.28-205.46C512.26 8.009 590-19.862 590 68.825c0 17.712-10.155 148.79-16.111 170.07-20.703 73.984-96.144 92.854-163.25 81.433 117.3 19.964 147.14 86.092 82.697 152.22-122.39 125.59-175.91-31.511-189.63-71.766-2.514-7.38-3.69-10.832-3.708-7.896-.017-2.936-1.193.516-3.707 7.896-13.714 40.255-67.233 197.36-189.63 71.766-64.444-66.128-34.605-132.256 82.697-152.22-67.108 11.421-142.549-7.449-163.25-81.433C20.15 217.613 10 86.536 10 68.824c0-88.687 77.742-60.816 125.72-24.795z" />
+    </svg>
+  );
+}
+
+function PlatformBadge({ platform }: { platform: SocialPlatform }) {
+  const config: Record<string, { label: string; bg: string; color: string }> = {
+    x: { label: "X", bg: "rgba(168, 162, 158, 0.12)", color: "var(--ink-muted)" },
+    bluesky: { label: "Bsky", bg: "rgba(32, 139, 254, 0.12)", color: "#4a9eed" },
+    linkedin: { label: "LI", bg: "rgba(10, 102, 194, 0.12)", color: "#5a8cb8" },
+    mastodon: { label: "Masto", bg: "rgba(99, 100, 255, 0.12)", color: "#7b7cee" },
+    threads: { label: "Thrd", bg: "rgba(168, 162, 158, 0.12)", color: "var(--ink-muted)" },
+  };
+  const c = config[platform] || config.x;
+  return (
+    <span
+      style={{
+        fontSize: "0.58rem",
+        fontWeight: 600,
+        textTransform: "uppercase",
+        letterSpacing: "0.04em",
+        padding: "1px 6px",
+        borderRadius: "var(--radius-pill)",
+        background: c.bg,
+        color: c.color,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 3,
+      }}
+    >
+      {platform === "bluesky" ? <BlueskyIcon size={9} /> : null}
+      {c.label}
+    </span>
+  );
+}
+
+interface SocialDrawerProps {
   onRefresh?: () => void;
 }
 
-export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
+export function SocialDrawer({ onRefresh }: SocialDrawerProps) {
   const [expanded, setExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("queue");
   const [tweets, setTweets] = useState<Tweet[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [rateCount, setRateCount] = useState(0);
+
+  // Platform filter & compose target
+  const [platformFilter, setPlatformFilter] = useState<PlatformFilter>("all");
+  const [postTarget, setPostTarget] = useState<PostTarget>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("so_post_target") as PostTarget) || "x";
+    }
+    return "x";
+  });
 
   // Compose state
   const [composeContent, setComposeContent] = useState("");
@@ -50,6 +100,15 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
   const [twitterConnected, setTwitterConnected] = useState<boolean | null>(null);
   const [isConnectingTwitter, setIsConnectingTwitter] = useState(false);
 
+  // Bluesky connection
+  const [blueskyConnected, setBlueskyConnected] = useState<boolean | null>(null);
+  const [isConnectingBluesky, setIsConnectingBluesky] = useState(false);
+
+  // Persist post target to localStorage
+  useEffect(() => {
+    localStorage.setItem("so_post_target", postTarget);
+  }, [postTarget]);
+
   const checkTwitterStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/twitter/auth?action=status");
@@ -74,6 +133,32 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
       // ignore
     } finally {
       setIsConnectingTwitter(false);
+    }
+  };
+
+  const checkBlueskyStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/bluesky/auth?action=status");
+      if (res.ok) {
+        const data = await res.json();
+        setBlueskyConnected(data.connected);
+      }
+    } catch {
+      setBlueskyConnected(false);
+    }
+  }, []);
+
+  const connectBluesky = async () => {
+    setIsConnectingBluesky(true);
+    try {
+      const res = await fetch("/api/bluesky/auth?action=connect");
+      if (res.ok) {
+        setBlueskyConnected(true);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsConnectingBluesky(false);
     }
   };
 
@@ -115,14 +200,15 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
     fetchTweets();
     fetchRateLimit();
     checkTwitterStatus();
-  }, [fetchTweets, fetchRateLimit, checkTwitterStatus]);
+    checkBlueskyStatus();
+  }, [fetchTweets, fetchRateLimit, checkTwitterStatus, checkBlueskyStatus]);
 
-  // Re-check Twitter status when window regains focus (after OAuth popup)
+  // Re-check connection status when window regains focus (after OAuth popup)
   useEffect(() => {
-    function onFocus() { checkTwitterStatus(); }
+    function onFocus() { checkTwitterStatus(); checkBlueskyStatus(); }
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
-  }, [checkTwitterStatus]);
+  }, [checkTwitterStatus, checkBlueskyStatus]);
 
   useEffect(() => {
     if (expanded) {
@@ -131,10 +217,16 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
     }
   }, [expanded, fetchTweets, fetchRateLimit]);
 
+  const matchesPlatform = (t: Tweet) => {
+    if (platformFilter === "all") return true;
+    const p = t.platform || "x";
+    return p === platformFilter;
+  };
+
   const drafts = tweets.filter((t) => t.status === "draft");
   const scheduled = tweets.filter((t) => t.status === "scheduled");
   const queueTweets = tweets
-    .filter((t) => t.status === "draft" || t.status === "scheduled")
+    .filter((t) => (t.status === "draft" || t.status === "scheduled") && matchesPlatform(t))
     .sort((a, b) => {
       if (a.scheduled_at && b.scheduled_at) return a.scheduled_at.localeCompare(b.scheduled_at);
       if (a.scheduled_at) return -1;
@@ -142,7 +234,7 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   const postedTweets = tweets
-    .filter((t) => t.status === "posted")
+    .filter((t) => t.status === "posted" && matchesPlatform(t))
     .sort((a, b) => {
       const aTime = a.posted_at || a.created_at;
       const bTime = b.posted_at || b.created_at;
@@ -155,6 +247,24 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
     const today = new Date().toISOString().slice(0, 10);
     return t.scheduled_at.startsWith(today);
   });
+
+  // Connected platforms summary
+  const connectedPlatforms: string[] = [];
+  if (twitterConnected) connectedPlatforms.push("X");
+  if (blueskyConnected) connectedPlatforms.push("Bluesky");
+
+  // Character limit based on post target
+  const getCharLimit = () => {
+    if (postTarget === "bluesky") return 300;
+    // "x" or "both" — use the more restrictive limit
+    return 280;
+  };
+
+  const getCharLimitLabel = () => {
+    if (postTarget === "bluesky") return `/${getCharLimit()} graphemes`;
+    if (postTarget === "both") return `/${getCharLimit()} (X limit)`;
+    return `/${getCharLimit()}`;
+  };
 
   // Actions
   const handlePostNow = async (tweetId: string) => {
@@ -385,8 +495,9 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
   };
 
   const getCharCountClass = (len: number) => {
-    if (len > 280) return "char-counter char-counter-over";
-    if (len > 260) return "char-counter char-counter-warn";
+    const limit = getCharLimit();
+    if (len > limit) return "char-counter char-counter-over";
+    if (len > limit - 20) return "char-counter char-counter-warn";
     return "char-counter";
   };
 
@@ -425,6 +536,13 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
 
   // --- Collapsed view ---
   if (!expanded) {
+    const summaryParts = isLoading
+      ? "Loading..."
+      : `${drafts.length} draft${drafts.length !== 1 ? "s" : ""}, ${todayScheduled.length} scheduled for today`;
+    const platformSuffix = connectedPlatforms.length > 0
+      ? ` \u00B7 ${connectedPlatforms.join(", ")}`
+      : "";
+
     return (
       <div
         className="glass twitter-drawer-collapsed"
@@ -441,7 +559,10 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
         }}
         onClick={() => setExpanded(true)}
       >
-        <XIcon size={18} />
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <XIcon size={16} />
+          {blueskyConnected && <BlueskyIcon size={14} />}
+        </div>
         <span
           style={{
             flex: 1,
@@ -450,10 +571,27 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
             fontFamily: "var(--font-body)",
           }}
         >
-          {isLoading
-            ? "Loading..."
-            : `${drafts.length} draft${drafts.length !== 1 ? "s" : ""}, ${todayScheduled.length} scheduled for today`}
+          {summaryParts}{platformSuffix}
         </span>
+        {blueskyConnected === false && (
+          <button
+            onClick={(e) => { e.stopPropagation(); connectBluesky(); }}
+            disabled={isConnectingBluesky}
+            style={{
+              padding: "3px 10px",
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              background: "rgba(32, 139, 254, 0.1)",
+              color: "#4a9eed",
+              border: "1px solid rgba(32, 139, 254, 0.2)",
+              borderRadius: 6,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {isConnectingBluesky ? "..." : "Connect Bluesky"}
+          </button>
+        )}
         <ChevronDown size={16} style={{ color: "var(--ink-muted)" }} />
       </div>
     );
@@ -463,7 +601,7 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
   return (
     <section
       className="glass twitter-drawer-expanded"
-      aria-label="Twitter"
+      aria-label="Social"
       style={{
         marginBottom: "2rem",
         overflow: "hidden",
@@ -475,8 +613,11 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
       {/* Header */}
       <div className="panel-header">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <XIcon size={18} />
-          <span className="panel-title">Twitter</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <XIcon size={16} />
+            <BlueskyIcon size={14} />
+          </div>
+          <span className="panel-title">Social</span>
         </div>
         <button
           onClick={() => setExpanded(false)}
@@ -499,6 +640,44 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
         </button>
       </div>
 
+      {/* Platform filter tabs */}
+      <div
+        style={{
+          display: "flex",
+          gap: 4,
+          padding: "8px 1.6rem 0",
+        }}
+      >
+        {(["all", "x", "bluesky"] as PlatformFilter[]).map((pf) => (
+          <button
+            key={pf}
+            onClick={() => setPlatformFilter(pf)}
+            style={{
+              padding: "4px 12px",
+              fontSize: "0.68rem",
+              fontWeight: 500,
+              fontFamily: "var(--font-body)",
+              letterSpacing: "0.02em",
+              borderRadius: "var(--radius-pill)",
+              border: "1px solid",
+              borderColor: platformFilter === pf
+                ? pf === "bluesky" ? "rgba(32, 139, 254, 0.3)" : "var(--sage-400)"
+                : "rgba(168, 162, 158, 0.15)",
+              background: platformFilter === pf
+                ? pf === "bluesky" ? "rgba(32, 139, 254, 0.1)" : "var(--accent-soft)"
+                : "transparent",
+              color: platformFilter === pf
+                ? pf === "bluesky" ? "#4a9eed" : "var(--sage-500)"
+                : "var(--ink-muted)",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+            }}
+          >
+            {pf === "all" ? "All" : pf === "x" ? "X" : "Bluesky"}
+          </button>
+        ))}
+      </div>
+
       {/* Tabs */}
       <div className="twitter-tabs">
         {(["queue", "compose", "posted"] as Tab[]).map((tab) => (
@@ -512,39 +691,79 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
         ))}
       </div>
 
-      {/* Twitter connection banner */}
-      {twitterConnected === false && (
-        <div
-          style={{
-            margin: "8px 12px",
-            padding: "10px 14px",
-            fontSize: "0.78rem",
-            color: "var(--ceramic-warm)",
-            background: "color-mix(in srgb, var(--ceramic-warm) 8%, transparent)",
-            borderRadius: 8,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 8,
-          }}
-        >
-          <span>Twitter not connected</span>
-          <button
-            onClick={connectTwitter}
-            disabled={isConnectingTwitter}
-            style={{
-              padding: "4px 12px",
-              fontSize: "0.72rem",
-              fontWeight: 600,
-              background: "var(--ink)",
-              color: "var(--linen)",
-              border: "none",
-              borderRadius: 6,
-              cursor: "pointer",
-            }}
-          >
-            {isConnectingTwitter ? "..." : "Connect"}
-          </button>
+      {/* Connection banners */}
+      {(twitterConnected === false || blueskyConnected === false) && (
+        <div style={{ margin: "8px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+          {twitterConnected === false && (
+            <div
+              style={{
+                padding: "10px 14px",
+                fontSize: "0.78rem",
+                color: "var(--ceramic-warm)",
+                background: "color-mix(in srgb, var(--ceramic-warm) 8%, transparent)",
+                borderRadius: 8,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <XIcon size={13} /> X not connected
+              </span>
+              <button
+                onClick={connectTwitter}
+                disabled={isConnectingTwitter}
+                style={{
+                  padding: "4px 12px",
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  background: "var(--ink)",
+                  color: "var(--paper)",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+              >
+                {isConnectingTwitter ? "..." : "Connect"}
+              </button>
+            </div>
+          )}
+          {blueskyConnected === false && (
+            <div
+              style={{
+                padding: "10px 14px",
+                fontSize: "0.78rem",
+                color: "#4a9eed",
+                background: "rgba(32, 139, 254, 0.06)",
+                borderRadius: 8,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <BlueskyIcon size={13} /> Bluesky not connected
+              </span>
+              <button
+                onClick={connectBluesky}
+                disabled={isConnectingBluesky}
+                style={{
+                  padding: "4px 12px",
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  background: "#4a9eed",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                }}
+              >
+                {isConnectingBluesky ? "..." : "Connect"}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -590,13 +809,13 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
                       />
                       <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
                         <span className={getCharCountClass(editContent.length)}>
-                          {editContent.length}/280
+                          {editContent.length}{getCharLimitLabel()}
                         </span>
                         <div style={{ flex: 1 }} />
                         <button
                           className="tweet-action-btn"
                           onClick={handleSaveEdit}
-                          disabled={editContent.length > 280}
+                          disabled={editContent.length > getCharLimit()}
                         >
                           Save
                         </button>
@@ -616,10 +835,11 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
                             ? tweet.content.slice(0, 100) + "..."
                             : tweet.content}
                         </p>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                           <span className={getStatusBadgeClass(tweet.status)}>
                             {tweet.status}
                           </span>
+                          <PlatformBadge platform={tweet.platform || "x"} />
                           {tweet.scheduled_at && (
                             <span style={{ fontSize: "0.72rem", color: "var(--ink-muted)" }}>
                               {formatTime(tweet.scheduled_at)}
@@ -702,6 +922,50 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
         {/* ===== COMPOSE TAB ===== */}
         {activeTab === "compose" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* Platform target selector */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: "0.72rem", color: "var(--ink-muted)", whiteSpace: "nowrap" }}>Post to:</span>
+              {(["x", "bluesky", "both"] as PostTarget[]).map((target) => (
+                <button
+                  key={target}
+                  onClick={() => setPostTarget(target)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    padding: "4px 10px",
+                    fontSize: "0.7rem",
+                    fontWeight: 500,
+                    fontFamily: "var(--font-body)",
+                    borderRadius: "var(--radius-pill)",
+                    border: "1px solid",
+                    borderColor: postTarget === target
+                      ? target === "bluesky" ? "rgba(32, 139, 254, 0.3)"
+                      : target === "both" ? "rgba(168, 162, 158, 0.3)"
+                      : "var(--sage-400)"
+                      : "rgba(168, 162, 158, 0.15)",
+                    background: postTarget === target
+                      ? target === "bluesky" ? "rgba(32, 139, 254, 0.1)"
+                      : target === "both" ? "rgba(168, 162, 158, 0.12)"
+                      : "var(--accent-soft)"
+                      : "transparent",
+                    color: postTarget === target
+                      ? target === "bluesky" ? "#4a9eed"
+                      : target === "both" ? "var(--ink-light)"
+                      : "var(--sage-500)"
+                      : "var(--ink-muted)",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {target === "x" && <XIcon size={10} />}
+                  {target === "bluesky" && <BlueskyIcon size={10} />}
+                  {target === "both" && <><XIcon size={10} /><BlueskyIcon size={9} /></>}
+                  {target === "x" ? "X" : target === "bluesky" ? "Bluesky" : "Both"}
+                </button>
+              ))}
+            </div>
+
             {/* Thread toggle */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <button
@@ -753,7 +1017,7 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
                 />
                 <div style={{ textAlign: "right", marginTop: 4 }}>
                   <span className={getCharCountClass(composeContent.length)}>
-                    {composeContent.length}/280
+                    {composeContent.length}{getCharLimitLabel()}
                   </span>
                 </div>
               </div>
@@ -808,7 +1072,7 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
                     />
                     <div style={{ display: "flex", justifyContent: "space-between", marginTop: 2 }}>
                       <span className={getCharCountClass(text.length)}>
-                        {text.length}/280
+                        {text.length}{getCharLimitLabel()}
                       </span>
                       {threadTweets.length > 1 && (
                         <button
@@ -965,11 +1229,14 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
                   <p style={{ fontSize: "0.82rem", color: "var(--ink)", margin: 0, lineHeight: 1.5 }}>
                     {tweet.content}
                   </p>
-                  {tweet.posted_at && (
-                    <span style={{ fontSize: "0.72rem", color: "var(--ink-muted)", marginTop: 4, display: "block" }}>
-                      Posted {formatTime(tweet.posted_at)}
-                    </span>
-                  )}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                    <PlatformBadge platform={tweet.platform || "x"} />
+                    {tweet.posted_at && (
+                      <span style={{ fontSize: "0.72rem", color: "var(--ink-muted)" }}>
+                        Posted {formatTime(tweet.posted_at)}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div style={{ flexShrink: 0 }}>
                   {deletingId === tweet.id ? (
