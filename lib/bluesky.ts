@@ -107,13 +107,16 @@ async function withBlueskyRetry<T>(
 
         // Rate limited — respect ratelimit-reset header
         if (err.status === ResponseType.RateLimitExceeded) {
-          const resetHeader = err.headers?.["ratelimit-reset"];
-          const waitMs = resetHeader
-            ? Math.max(0, Number(resetHeader) * 1000 - Date.now())
-            : 60_000;
-          console.warn(`Bluesky rate limited, waiting ${Math.round(waitMs / 1000)}s`);
-          await sleep(Math.min(waitMs, 300_000)); // cap at 5 min
-          continue;
+          if (attempt < maxRetries) {
+            const resetHeader = err.headers?.["ratelimit-reset"];
+            const waitMs = resetHeader
+              ? Math.max(0, Number(resetHeader) * 1000 - Date.now())
+              : 60_000;
+            console.warn(`Bluesky rate limited, waiting ${Math.round(waitMs / 1000)}s (attempt ${attempt + 1}/${maxRetries})`);
+            await sleep(Math.min(waitMs, 300_000)); // cap at 5 min
+            continue;
+          }
+          throw err;
         }
 
         // Auth expired — don't retry here, caller should re-authenticate
@@ -301,9 +304,13 @@ export async function postToBluesky(
   const record: Record<string, unknown> = {
     $type: "app.bsky.feed.post",
     text: rt.text,
-    facets: rt.facets,
     createdAt: new Date().toISOString(),
   };
+
+  // Only include facets if detected (avoids sending undefined/empty array)
+  if (rt.facets && rt.facets.length > 0) {
+    record.facets = rt.facets;
+  }
 
   // Attach images embed
   if (opts?.images && opts.images.length > 0) {

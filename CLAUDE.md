@@ -44,6 +44,12 @@ Personal AI command center. Next.js 16.1.6 (App Router, TypeScript), Tailwind CS
 
 6. **Tool handlers missing content validation**: `draftTweet` and `addThreadTweet` in lib/tools.ts wrote directly to Supabase without validating empty content or 280-char limit. Added validation to both.
 
+7. **Postiz `postizFetch()` crashed on non-JSON responses**: If the Postiz API (or a reverse proxy in front of it) returned HTML/text on a 200 response, `res.json()` would throw an opaque `SyntaxError`. Added content-type check before parsing. Same fix applied to `uploadMedia`.
+
+8. **Bluesky `withBlueskyRetry()` infinite loop on persistent rate-limiting**: The 429 handler used `continue` without checking `attempt < maxRetries`, so a persistently rate-limited endpoint would retry forever. Added the retry-count guard and throws after exhausting retries.
+
+9. **Postiz posting path missing "posting" guard**: `postTweetViaPostiz` in lib/tools.ts didn't set `status: "posting"` before calling the API, unlike the direct path. This left a window for concurrent duplicate posts. Added the intermediate status update.
+
 ## Learnings
 
 1. **Next.js 16 build uses Turbopack by default** even for `next build`. Must use `--webpack` flag for both dev and build to avoid Turbopack issues.

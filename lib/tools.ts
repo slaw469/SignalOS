@@ -365,6 +365,12 @@ async function postTweetViaPostiz(
   tweet: Record<string, unknown>,
   tweetId: string
 ): Promise<ToolResult> {
+  // Mark as "posting" to prevent concurrent re-posts (see Bug Log #4, #5)
+  await supabase
+    .from("tweets")
+    .update({ status: "posting", updated_at: new Date().toISOString() })
+    .eq("id", tweetId);
+
   try {
     // Find the X/Twitter integration in Postiz
     const integrations = await postizGetIntegrations();
@@ -423,6 +429,12 @@ async function postTweetDirect(
   tweet: Record<string, unknown>,
   tweetId: string
 ): Promise<ToolResult> {
+  // Mark as "posting" to prevent concurrent re-posts (see Bug Log #4, #5)
+  await supabase
+    .from("tweets")
+    .update({ status: "posting", updated_at: new Date().toISOString() })
+    .eq("id", tweetId);
+
   const client = await getAuthenticatedTwitterClient();
   if (!client) return { success: false, error: TWITTER_NOT_CONNECTED };
 

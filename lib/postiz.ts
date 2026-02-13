@@ -50,10 +50,14 @@ async function postizFetch<T>(
 ): Promise<T> {
   const url = `${POSTIZ_API_URL}${path}`;
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
     Authorization: POSTIZ_API_KEY,
     ...(options.headers as Record<string, string> | undefined),
   };
+
+  // Only set Content-Type for requests with a body
+  if (options.body) {
+    headers["Content-Type"] = headers["Content-Type"] || "application/json";
+  }
 
   const res = await fetch(url, {
     ...options,
@@ -67,6 +71,15 @@ async function postizFetch<T>(
 
   // Some endpoints (DELETE) may return 204 with no body
   if (res.status === 204) return undefined as T;
+
+  // Guard against non-JSON success responses (e.g. reverse proxy HTML error pages)
+  const contentType = res.headers.get("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      `Postiz API returned non-JSON response (${contentType || "no content-type"}): ${text.slice(0, 200)}`
+    );
+  }
 
   return res.json() as Promise<T>;
 }
@@ -106,7 +119,7 @@ export async function uploadMedia(
   filename: string
 ): Promise<{ id: string; path: string }> {
   const formData = new FormData();
-  const blob = file instanceof Blob ? file : new Blob([file]);
+  const blob = file instanceof Blob ? file : new Blob([new Uint8Array(file)]);
   formData.append("file", blob, filename);
 
   const url = `${POSTIZ_API_URL}/upload`;
@@ -122,6 +135,14 @@ export async function uploadMedia(
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`Postiz upload error ${res.status}: ${body || res.statusText}`);
+  }
+
+  const uploadContentType = res.headers.get("content-type") || "";
+  if (!uploadContentType.includes("application/json")) {
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      `Postiz upload returned non-JSON response (${uploadContentType || "no content-type"}): ${text.slice(0, 200)}`
+    );
   }
 
   return res.json() as Promise<{ id: string; path: string }>;
