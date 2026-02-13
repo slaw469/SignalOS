@@ -46,6 +46,37 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
   const [postingId, setPostingId] = useState<string | null>(null);
   const [postError, setPostError] = useState<string | null>(null);
 
+  // Twitter connection
+  const [twitterConnected, setTwitterConnected] = useState<boolean | null>(null);
+  const [isConnectingTwitter, setIsConnectingTwitter] = useState(false);
+
+  const checkTwitterStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/twitter/auth?action=status");
+      if (res.ok) {
+        const data = await res.json();
+        setTwitterConnected(data.connected);
+      }
+    } catch {
+      setTwitterConnected(false);
+    }
+  }, []);
+
+  const connectTwitter = async () => {
+    setIsConnectingTwitter(true);
+    try {
+      const res = await fetch("/api/twitter/auth?action=url");
+      if (res.ok) {
+        const data = await res.json();
+        window.open(data.url, "_blank", "width=600,height=700");
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsConnectingTwitter(false);
+    }
+  };
+
   const fetchTweets = useCallback(async () => {
     try {
       const res = await fetch("/api/tweets");
@@ -83,7 +114,15 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
   useEffect(() => {
     fetchTweets();
     fetchRateLimit();
-  }, [fetchTweets, fetchRateLimit]);
+    checkTwitterStatus();
+  }, [fetchTweets, fetchRateLimit, checkTwitterStatus]);
+
+  // Re-check Twitter status when window regains focus (after OAuth popup)
+  useEffect(() => {
+    function onFocus() { checkTwitterStatus(); }
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [checkTwitterStatus]);
 
   useEffect(() => {
     if (expanded) {
@@ -472,6 +511,42 @@ export function TwitterDrawer({ onRefresh }: TwitterDrawerProps) {
           </button>
         ))}
       </div>
+
+      {/* Twitter connection banner */}
+      {twitterConnected === false && (
+        <div
+          style={{
+            margin: "8px 12px",
+            padding: "10px 14px",
+            fontSize: "0.78rem",
+            color: "var(--ceramic-warm)",
+            background: "color-mix(in srgb, var(--ceramic-warm) 8%, transparent)",
+            borderRadius: 8,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 8,
+          }}
+        >
+          <span>Twitter not connected</span>
+          <button
+            onClick={connectTwitter}
+            disabled={isConnectingTwitter}
+            style={{
+              padding: "4px 12px",
+              fontSize: "0.72rem",
+              fontWeight: 600,
+              background: "var(--ink)",
+              color: "var(--linen)",
+              border: "none",
+              borderRadius: 6,
+              cursor: "pointer",
+            }}
+          >
+            {isConnectingTwitter ? "..." : "Connect"}
+          </button>
+        </div>
+      )}
 
       {/* Tab content */}
       <div className="panel-body" style={{ maxHeight: 420, overflowY: "auto" }}>

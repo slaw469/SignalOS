@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface CalendarEvent {
@@ -405,7 +406,7 @@ export function CalendarOverlay({ open, onClose }: CalendarOverlayProps) {
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className={`cal-overlay-backdrop${visible ? " visible" : ""}`} onClick={onClose}>
       <div
         className={`cal-overlay${visible ? " visible" : ""}`}
@@ -468,6 +469,7 @@ export function CalendarOverlay({ open, onClose }: CalendarOverlayProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
