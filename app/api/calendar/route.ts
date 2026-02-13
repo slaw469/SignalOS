@@ -93,9 +93,13 @@ export async function GET(request: NextRequest) {
   const startParam = searchParams.get("start");
   const endParam = searchParams.get("end");
 
+  // Calculate "today" in user's timezone to avoid UTC offset issues on Vercel
+  const userTz = "America/New_York";
   const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+  const todayStr = now.toLocaleDateString("en-CA", { timeZone: userTz }); // "YYYY-MM-DD"
+  // Build midnight-to-midnight in user's timezone via toLocaleString round-trip
+  const startOfDay = new Date(new Date(`${todayStr}T00:00:00`).toLocaleString("en-US", { timeZone: userTz }));
+  const endOfDay = new Date(new Date(`${todayStr}T23:59:59.999`).toLocaleString("en-US", { timeZone: userTz }));
 
   const timeMin = startParam ?? startOfDay.toISOString();
   const timeMax = endParam ?? endOfDay.toISOString();
