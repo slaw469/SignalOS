@@ -3,33 +3,39 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 
-function getThemeFromDOM(): "light" | "dark" {
-  if (typeof document === "undefined") return "light";
-  return document.documentElement.getAttribute("data-theme") === "dark"
-    ? "dark"
-    : "light";
+function resolveTheme(): "light" | "dark" {
+  if (typeof window === "undefined") return "light";
+  try {
+    const stored = localStorage.getItem("signalos-theme");
+    if (stored === "dark" || stored === "light") return stored;
+  } catch {}
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyTheme(t: "light" | "dark") {
+  document.documentElement.setAttribute("data-theme", t);
+  if (t === "dark") {
+    document.documentElement.classList.add("dark");
+  } else {
+    document.documentElement.classList.remove("dark");
+  }
 }
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<"light" | "dark">(getThemeFromDOM);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    // Sync with what the head script already set
-    const current = getThemeFromDOM();
-    if (current !== theme) {
-      setTheme(current);
-    }
+    const t = resolveTheme();
+    applyTheme(t);
+    setTheme(t);
   }, []);
 
   function toggle() {
     const next = theme === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", next);
-    document.documentElement.classList.toggle("dark", next === "dark");
+    applyTheme(next);
     try {
       localStorage.setItem("signalos-theme", next);
-    } catch {
-      // localStorage may be unavailable in Safari private browsing
-    }
+    } catch {}
     setTheme(next);
   }
 
