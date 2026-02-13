@@ -1,4 +1,4 @@
-import { TwitterApi, SendTweetV2Params, TweetV2PostTweetResult } from "twitter-api-v2";
+import { TwitterApi, SendTweetV2Params, TweetV2PostTweetResult, EUploadMimeType } from "twitter-api-v2";
 import { supabase } from "@/lib/supabase";
 
 const TWITTER_CLIENT_ID = process.env.TWITTER_CLIENT_ID!;
@@ -104,7 +104,7 @@ export async function uploadMedia(
   mimeType: string
 ): Promise<string> {
   // Use v2 media upload (OAuth 2.0 with media.write scope)
-  const mediaId = await client.v2.uploadMedia(imageBuffer, { media_type: mimeType });
+  const mediaId = await client.v2.uploadMedia(imageBuffer, { media_type: mimeType as EUploadMimeType });
   return mediaId;
 }
 
