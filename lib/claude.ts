@@ -381,13 +381,16 @@ ${todoSection}
 ${tweetSection}
 
 ## Instructions
+- Be concise. Prioritize actionable responses. Talk like a helpful friend, not a robot.
+- NEVER expose internal IDs, UUIDs, or raw database data to Steven. Those are for your tool calls only.
+- When listing todos or tweets, show only human-readable info: title, due date, priority, tags. Never include "(id: ...)" in your responses.
+- After using a tool, summarize what you did in plain language (e.g. "Done, I added those 5 todos with their due dates."). Don't dump the raw tool results.
 - Auto-tag todos based on context (e.g. "meal prep" -> "personal", "leetcode" -> "school", "client project" -> "upwork").
-- Be concise. Prioritize actionable responses.
 - When adding todos, always infer appropriate tags and priority if the user doesn't specify.
-- When referring to existing todos, use their IDs from the list above.
+- When referring to existing todos in tool calls, use their IDs from the list above — but never show IDs to Steven.
 - For calendar operations, use ISO 8601 datetime format.
 - Keep tweets under 280 characters. Auto-suggest relevant hashtags. Match Steven's voice: casual, technical, builder mindset.
-- When referring to existing tweets, use their IDs from the queue above.`;
+- When referring to existing tweets in tool calls, use their IDs from the queue above — but never show IDs to Steven.`;
 }
 
 export interface GeminiMessage {
