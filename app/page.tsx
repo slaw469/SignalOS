@@ -77,7 +77,7 @@ export default function Home() {
           className="panels-grid grid grid-cols-3 gap-6 items-start mb-8"
         >
           <AgendaPanel key={`agenda-${refreshKey}`} />
-          <TodoPanel key={`todo-${refreshKey}`} />
+          <TodoPanel key={`todo-${refreshKey}`} refreshTrigger={refreshKey} />
           <ChatPanel onToolAction={triggerRefresh} />
         </div>
 

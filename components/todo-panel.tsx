@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { TodoItem } from "@/components/todo-item";
 import type { Todo } from "@/lib/types";
-import { Plus, X, Leaf } from "lucide-react";
+import { Plus, X, Leaf, ChevronDown, ChevronUp } from "lucide-react";
 
 const FILTERS = ["All", "Startup", "School", "Upwork", "Personal"] as const;
 
@@ -39,7 +39,11 @@ function EmptyTodos() {
   );
 }
 
-export function TodoPanel() {
+interface TodoPanelProps {
+  refreshTrigger?: number;
+}
+
+export function TodoPanel({ refreshTrigger }: TodoPanelProps) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("All");
@@ -49,25 +53,34 @@ export function TodoPanel() {
   const [newTag, setNewTag] = useState("personal");
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState("");
+  const [expanded, setExpanded] = useState(false);
+
+  const fetchTodos = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/todos?include_completed=true&_t=${Date.now()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setTodos(data);
+        }
+      }
+    } catch {
+      // keep existing data
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchTodos() {
-      try {
-        const res = await fetch("/api/todos?include_completed=true");
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            setTodos(data);
-          }
-        }
-      } catch {
-        // keep mock data
-      } finally {
-        setIsLoading(false);
-      }
-    }
     fetchTodos();
-  }, []);
+  }, [fetchTodos]);
+
+  // Refetch when refreshTrigger changes (e.g. after AI adds a todo)
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      fetchTodos();
+    }
+  }, [refreshTrigger, fetchTodos]);
 
   const handleToggle = useCallback(async (id: string, completed: boolean) => {
     // Optimistic update
@@ -186,18 +199,58 @@ export function TodoPanel() {
         {!isLoading && filtered.length === 0 && <EmptyTodos />}
 
         {/* Todo List */}
-        {!isLoading && filtered.length > 0 && (
-          <ul className="flex flex-col gap-[2px] flex-1" style={{ listStyle: "none" }}>
-            {filtered.map((todo) => (
-              <TodoItem
-                key={todo.id}
-                todo={todo}
-                onToggle={handleToggle}
-                onDelete={handleDelete}
-              />
-            ))}
-          </ul>
-        )}
+        {!isLoading && filtered.length > 0 && (() => {
+          const COLLAPSED_LIMIT = 7;
+          const showToggle = filtered.length > COLLAPSED_LIMIT;
+          const visible = expanded ? filtered : filtered.slice(0, COLLAPSED_LIMIT);
+          return (
+            <>
+              <ul className="flex flex-col gap-[2px] flex-1" style={{ listStyle: "none" }}>
+                {visible.map((todo) => (
+                  <TodoItem
+                    key={todo.id}
+                    todo={todo}
+                    onToggle={handleToggle}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </ul>
+              {showToggle && (
+                <button
+                  onClick={() => setExpanded((e) => !e)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    width: "100%",
+                    padding: "10px 0",
+                    marginTop: 4,
+                    background: "none",
+                    border: "1px solid color-mix(in srgb, var(--ink) 8%, transparent)",
+                    borderRadius: "var(--so-radius)",
+                    color: "var(--ink-muted)",
+                    fontSize: "0.78rem",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {expanded ? (
+                    <>
+                      <ChevronUp size={14} />
+                      Show less
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown size={14} />
+                      Show all {filtered.length} tasks
+                    </>
+                  )}
+                </button>
+              )}
+            </>
+          );
+        })()}
 
         {addError && (
           <div style={{ fontSize: "0.78rem", color: "#b45858", padding: "4px 10px", marginTop: 4 }}>{addError}</div>
