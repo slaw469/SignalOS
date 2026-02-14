@@ -502,7 +502,9 @@ async function postTweetDirect(
     }
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
+    const errData = (err as { data?: { title?: string; detail?: string } }).data;
     const isAuthError = errMsg.includes("401") || errMsg.includes("403") || errMsg.includes("Unauthorized") || errMsg.includes("Forbidden");
+    const isCreditsError = errMsg.includes("402") || errData?.title === "CreditsDepleted";
 
     // Mark as failed with error
     await supabase
@@ -513,6 +515,13 @@ async function postTweetDirect(
         updated_at: new Date().toISOString(),
       })
       .eq("id", tweetId);
+
+    if (isCreditsError) {
+      return {
+        success: false,
+        error: "X/Twitter API credits are depleted. Check your Twitter Developer Portal billing to add credits or wait for them to reset.",
+      };
+    }
 
     // If auth error, clear stored tokens so user sees "X not connected"
     if (isAuthError) {
