@@ -136,12 +136,7 @@ export async function getAuthenticatedTwitterClient(): Promise<TwitterApi | null
   const { accessToken, refreshToken } = await getStoredTwitterTokens();
   if (!accessToken) return null;
 
-  // Return the client directly — no v2.me() health check (requires users.read
-  // which fails on Free tier). If the token is expired, the first real API call
-  // will fail and callers handle that error.
-  const client = getTwitterClient(accessToken);
-
-  // Proactively refresh if we have a refresh token (best-effort, non-blocking)
+  // Always try to refresh the token first — OAuth2 tokens expire in 2 hours
   if (refreshToken) {
     try {
       const refreshed = await refreshTwitterToken(refreshToken);
@@ -156,14 +151,19 @@ export async function getAuthenticatedTwitterClient(): Promise<TwitterApi | null
         );
       }
       return refreshed.client;
-    } catch {
-      // Refresh failed — return the original client and let the caller
-      // handle any auth errors from the actual API call
-      return client;
+    } catch (err) {
+      console.error("Twitter token refresh failed:", err instanceof Error ? err.message : err);
+      // Refresh token is likely expired — clear stored tokens so the UI
+      // shows "X not connected" and the user can re-authenticate
+      await supabase.from("settings").delete().eq("key", "twitter_access_token");
+      await supabase.from("settings").delete().eq("key", "twitter_refresh_token");
+      return null;
     }
   }
 
-  return client;
+  // No refresh token — the access token is probably expired (2hr lifetime)
+  // Return the client but it will likely fail on the first API call
+  return getTwitterClient(accessToken);
 }
 
 // --- Smart scheduling ---

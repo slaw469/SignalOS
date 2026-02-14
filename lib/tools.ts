@@ -477,7 +477,16 @@ async function postTweetDirect(
     } else {
       // Single tweet
       const result = await twitterPostTweet(client, tweet.content as string);
-      const twitterId = result?.data?.id ?? null;
+      const twitterId = result?.data?.id;
+
+      // Validate the response — if no ID returned, the post didn't go through
+      if (!twitterId) {
+        await supabase
+          .from("tweets")
+          .update({ status: "failed", error: "Twitter API returned no tweet ID", updated_at: new Date().toISOString() })
+          .eq("id", tweetId);
+        return { success: false, error: "Twitter API returned success but no tweet ID. Your X account may need to be reconnected." };
+      }
 
       await supabase
         .from("tweets")
@@ -492,19 +501,32 @@ async function postTweetDirect(
       return { success: true, data: { posted: 1, twitter_id: twitterId } };
     }
   } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const isAuthError = errMsg.includes("401") || errMsg.includes("403") || errMsg.includes("Unauthorized") || errMsg.includes("Forbidden");
+
     // Mark as failed with error
     await supabase
       .from("tweets")
       .update({
         status: "failed",
-        error: err instanceof Error ? err.message : String(err),
+        error: errMsg,
         updated_at: new Date().toISOString(),
       })
       .eq("id", tweetId);
 
+    // If auth error, clear stored tokens so user sees "X not connected"
+    if (isAuthError) {
+      await supabase.from("settings").delete().eq("key", "twitter_access_token");
+      await supabase.from("settings").delete().eq("key", "twitter_refresh_token");
+      return {
+        success: false,
+        error: "X/Twitter authentication expired. Please reconnect your X account in the Social panel.",
+      };
+    }
+
     return {
       success: false,
-      error: `Failed to post tweet: ${err instanceof Error ? err.message : String(err)}`,
+      error: `Failed to post tweet: ${errMsg}`,
     };
   }
 }
