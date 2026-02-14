@@ -558,6 +558,33 @@ async function handleDeleteTweet(input: { tweet_id: string }): Promise<ToolResul
   return { success: true, data: { deleted: input.tweet_id } };
 }
 
+async function composeAndPostTweet(input: {
+  content: string;
+}): Promise<ToolResult> {
+  if (!input.content || input.content.trim().length === 0) {
+    return { success: false, error: "Tweet content cannot be empty" };
+  }
+  if (input.content.length > 280) {
+    return { success: false, error: `Tweet content is ${input.content.length} characters. Max is 280.` };
+  }
+
+  // 1. Insert as draft
+  const { data: tweet, error: insertError } = await supabase
+    .from("tweets")
+    .insert({
+      content: input.content.trim(),
+      status: "draft",
+    })
+    .select()
+    .single();
+
+  if (insertError) return { success: false, error: insertError.message };
+  if (!tweet) return { success: false, error: "Failed to create tweet" };
+
+  // 2. Post it immediately
+  return postTweetNow({ tweet_id: tweet.id });
+}
+
 async function suggestTweetIdeas(input: {
   topic?: string;
   count?: number;
@@ -660,6 +687,8 @@ export async function executeTool(
       return scheduleTweet(toolInput as Parameters<typeof scheduleTweet>[0]);
     case "post_tweet_now":
       return postTweetNow(toolInput as Parameters<typeof postTweetNow>[0]);
+    case "compose_and_post_tweet":
+      return composeAndPostTweet(toolInput as Parameters<typeof composeAndPostTweet>[0]);
     case "get_tweet_queue":
       return getTweetQueue(toolInput as Parameters<typeof getTweetQueue>[0]);
     case "delete_tweet":

@@ -247,6 +247,21 @@ export const geminiTools: FunctionDeclarationsTool[] = [
         },
       },
       {
+        name: "compose_and_post_tweet",
+        description:
+          "Compose a tweet and immediately post it to X/Twitter in one step. Use this when Steven asks you to tweet something right now.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            content: {
+              type: SchemaType.STRING,
+              description: "Tweet text (max 280 characters)",
+            },
+          },
+          required: ["content"],
+        },
+      },
+      {
         name: "get_tweet_queue",
         description:
           "Get the current tweet queue. Optionally filter by status (draft, scheduled, posted).",

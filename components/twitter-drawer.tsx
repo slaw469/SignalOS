@@ -691,81 +691,86 @@ export function SocialDrawer({ onRefresh }: SocialDrawerProps) {
         ))}
       </div>
 
-      {/* Connection banners */}
-      {(twitterConnected === false || blueskyConnected === false) && (
-        <div style={{ margin: "8px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
-          {twitterConnected === false && (
-            <div
-              style={{
-                padding: "10px 14px",
-                fontSize: "0.78rem",
-                color: "var(--ceramic-warm)",
-                background: "color-mix(in srgb, var(--ceramic-warm) 8%, transparent)",
-                borderRadius: 8,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 8,
-              }}
-            >
-              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <XIcon size={13} /> X not connected
-              </span>
-              <button
-                onClick={connectTwitter}
-                disabled={isConnectingTwitter}
+      {/* Connection banners — only show for the relevant platform filter */}
+      {(() => {
+        const showX = twitterConnected === false && platformFilter !== "bluesky";
+        const showBsky = blueskyConnected === false && platformFilter !== "x";
+        if (!showX && !showBsky) return null;
+        return (
+          <div style={{ margin: "8px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+            {showX && (
+              <div
                 style={{
-                  padding: "4px 12px",
-                  fontSize: "0.72rem",
-                  fontWeight: 600,
-                  background: "var(--ink)",
-                  color: "var(--paper)",
-                  border: "none",
-                  borderRadius: 6,
-                  cursor: "pointer",
+                  padding: "10px 14px",
+                  fontSize: "0.78rem",
+                  color: "var(--ceramic-warm)",
+                  background: "color-mix(in srgb, var(--ceramic-warm) 8%, transparent)",
+                  borderRadius: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
                 }}
               >
-                {isConnectingTwitter ? "..." : "Connect"}
-              </button>
-            </div>
-          )}
-          {blueskyConnected === false && (
-            <div
-              style={{
-                padding: "10px 14px",
-                fontSize: "0.78rem",
-                color: "#4a9eed",
-                background: "rgba(32, 139, 254, 0.06)",
-                borderRadius: 8,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 8,
-              }}
-            >
-              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <BlueskyIcon size={13} /> Bluesky not connected
-              </span>
-              <button
-                onClick={connectBluesky}
-                disabled={isConnectingBluesky}
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <XIcon size={13} /> X not connected
+                </span>
+                <button
+                  onClick={connectTwitter}
+                  disabled={isConnectingTwitter}
+                  style={{
+                    padding: "4px 12px",
+                    fontSize: "0.72rem",
+                    fontWeight: 600,
+                    background: "var(--ink)",
+                    color: "var(--paper)",
+                    border: "none",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                  }}
+                >
+                  {isConnectingTwitter ? "..." : "Connect"}
+                </button>
+              </div>
+            )}
+            {showBsky && (
+              <div
                 style={{
-                  padding: "4px 12px",
-                  fontSize: "0.72rem",
-                  fontWeight: 600,
-                  background: "#4a9eed",
-                  color: "white",
-                  border: "none",
-                  borderRadius: 6,
-                  cursor: "pointer",
+                  padding: "10px 14px",
+                  fontSize: "0.78rem",
+                  color: "#4a9eed",
+                  background: "rgba(32, 139, 254, 0.06)",
+                  borderRadius: 8,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 8,
                 }}
               >
-                {isConnectingBluesky ? "..." : "Connect"}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+                <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <BlueskyIcon size={13} /> Bluesky not connected
+                </span>
+                <button
+                  onClick={connectBluesky}
+                  disabled={isConnectingBluesky}
+                  style={{
+                    padding: "4px 12px",
+                    fontSize: "0.72rem",
+                    fontWeight: 600,
+                    background: "#4a9eed",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                  }}
+                >
+                  {isConnectingBluesky ? "..." : "Connect"}
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Tab content */}
       <div className="panel-body" style={{ maxHeight: 420, overflowY: "auto" }}>
