@@ -97,12 +97,21 @@ export async function GET(request: NextRequest) {
   const userTz = "America/Chicago";
   const now = new Date();
   const todayStr = now.toLocaleDateString("en-CA", { timeZone: userTz }); // "YYYY-MM-DD"
-  // Build midnight-to-midnight in user's timezone via toLocaleString round-trip
-  const startOfDay = new Date(new Date(`${todayStr}T00:00:00`).toLocaleString("en-US", { timeZone: userTz }));
-  const endOfDay = new Date(new Date(`${todayStr}T23:59:59.999`).toLocaleString("en-US", { timeZone: userTz }));
 
-  const timeMin = startParam ?? startOfDay.toISOString();
-  const timeMax = endParam ?? endOfDay.toISOString();
+  // Get the current UTC offset for the user's timezone (handles DST automatically)
+  // Format gives something like "GMT-6" (CST) or "GMT-5" (CDT)
+  const offsetStr = new Intl.DateTimeFormat("en-US", { timeZone: userTz, timeZoneName: "shortOffset" })
+    .formatToParts(now)
+    .find(p => p.type === "timeZoneName")?.value || "GMT-6";
+  const match = offsetStr.match(/GMT([+-]?)(\d+)/);
+  const sign = match?.[1] === "+" ? "+" : "-";
+  const hours = (match?.[2] || "6").padStart(2, "0");
+  const tzOffset = `${sign}${hours}:00`; // e.g. "-06:00" or "-05:00"
+
+  // Build RFC3339 timestamps with explicit timezone offset
+  // Google Calendar API accepts these directly — no round-trip conversion needed
+  const timeMin = startParam ?? `${todayStr}T00:00:00${tzOffset}`;
+  const timeMax = endParam ?? `${todayStr}T23:59:59${tzOffset}`;
 
   try {
     const events = await getCalendarEvents(accessToken, timeMin, timeMax);
