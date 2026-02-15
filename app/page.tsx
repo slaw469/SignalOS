@@ -82,7 +82,7 @@ export default function Home() {
           <ChatPanel onToolAction={triggerRefresh} />
         </div>
 
-        <DailyNonNegotiables />
+        <DailyNonNegotiables key={`daily-${refreshKey}`} />
 
         <SocialDrawer key={`social-${refreshKey}`} />
 
