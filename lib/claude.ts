@@ -308,6 +308,66 @@ export const geminiTools: FunctionDeclarationsTool[] = [
           },
         },
       },
+      // --- Daily Non-Negotiable tools ---
+      {
+        name: "get_daily_non_negotiables",
+        description:
+          "Get the list of daily non-negotiable tasks and their completion status for today.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {},
+        },
+      },
+      {
+        name: "add_daily_non_negotiable",
+        description:
+          "Add a new daily non-negotiable task. These are recurring daily tasks that reset each day.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            title: {
+              type: SchemaType.STRING,
+              description:
+                "Title of the non-negotiable (e.g. 'LeetCode', 'Read 30 min', 'Gym')",
+            },
+          },
+          required: ["title"],
+        },
+      },
+      {
+        name: "toggle_daily_non_negotiable",
+        description:
+          "Mark a daily non-negotiable task as completed or uncompleted for today.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            task_id: {
+              type: SchemaType.STRING,
+              description: "UUID of the daily non-negotiable task",
+            },
+            completed: {
+              type: SchemaType.BOOLEAN,
+              description: "Whether the task is completed for today",
+            },
+          },
+          required: ["task_id", "completed"],
+        },
+      },
+      {
+        name: "remove_daily_non_negotiable",
+        description:
+          "Remove a task from the daily non-negotiables list permanently.",
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            task_id: {
+              type: SchemaType.STRING,
+              description: "UUID of the daily non-negotiable to remove",
+            },
+          },
+          required: ["task_id"],
+        },
+      },
       // --- Cross-platform formatting tool ---
       {
         name: "format_content_for_platforms",
@@ -368,7 +428,8 @@ function formatTime(dateStr: string | null | undefined): string {
 export function buildSystemPrompt(
   todos: { id: string; title: string; priority: string; tags: string[]; due_date?: string; completed: boolean }[],
   todayEvents: CalendarEvent[],
-  tweets?: Tweet[]
+  tweets?: Tweet[],
+  dailyTasks?: { id: string; title: string; completed_today: boolean }[]
 ): string {
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-US", {
@@ -422,6 +483,16 @@ export function buildSystemPrompt(
           .join("\n")
       : "No tweets in queue.";
 
+  const dailyTasksSection =
+    dailyTasks && dailyTasks.length > 0
+      ? dailyTasks
+          .map((t) => {
+            const status = t.completed_today ? "[DONE]" : "[TODO]";
+            return `- ${status} ${t.title} (id: ${t.id})`;
+          })
+          .join("\n")
+      : "No non-negotiables configured.";
+
   return `You are SignalOS, Steven's personal AI command center. You manage his calendar, todo list, and Twitter/X presence.
 
 ## User Context
@@ -435,6 +506,9 @@ ${agendaSection}
 
 ## Current Todo List
 ${todoSection}
+
+## Daily Non-Negotiables
+${dailyTasksSection}
 
 ## Tweet Queue
 ${tweetSection}

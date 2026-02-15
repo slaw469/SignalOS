@@ -72,6 +72,17 @@ export interface Tweet {
   updated_at: string;
 }
 
+export interface DailyTask {
+  id: string;
+  title: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface DailyTaskWithStatus extends DailyTask {
+  completed_today: boolean;
+}
+
 /*
  * Migration SQL — add Postiz columns to tweets table:
  *

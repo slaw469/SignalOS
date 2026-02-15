@@ -679,6 +679,111 @@ async function formatContentForPlatforms(input: {
   };
 }
 
+// --- Daily Non-Negotiable Handlers ---
+
+async function getDailyNonNegotiables(): Promise<ToolResult> {
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data: tasks, error } = await supabase
+    .from("daily_tasks")
+    .select("*")
+    .order("sort_order", { ascending: true });
+
+  if (error) return { success: false, error: error.message };
+  if (!tasks || tasks.length === 0) {
+    return {
+      success: true,
+      data: { tasks: [], message: "No non-negotiables configured." },
+    };
+  }
+
+  const taskIds = tasks.map((t) => t.id);
+  const { data: completions } = await supabase
+    .from("daily_task_completions")
+    .select("daily_task_id")
+    .eq("completed_date", today)
+    .in("daily_task_id", taskIds);
+
+  const completedSet = new Set(
+    (completions ?? []).map((c) => c.daily_task_id)
+  );
+
+  const result = tasks.map((t) => ({
+    ...t,
+    completed_today: completedSet.has(t.id),
+  }));
+
+  return { success: true, data: result };
+}
+
+async function addDailyNonNegotiable(input: {
+  title: string;
+}): Promise<ToolResult> {
+  if (!input.title?.trim()) {
+    return { success: false, error: "Title cannot be empty" };
+  }
+
+  const { data: lastTask } = await supabase
+    .from("daily_tasks")
+    .select("sort_order")
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .single();
+
+  const nextOrder = (lastTask?.sort_order ?? -1) + 1;
+
+  const { data, error } = await supabase
+    .from("daily_tasks")
+    .insert({ title: input.title.trim(), sort_order: nextOrder })
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data };
+}
+
+async function toggleDailyNonNegotiable(input: {
+  task_id: string;
+  completed: boolean;
+}): Promise<ToolResult> {
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (input.completed) {
+    const { error } = await supabase
+      .from("daily_task_completions")
+      .upsert(
+        { daily_task_id: input.task_id, completed_date: today },
+        { onConflict: "daily_task_id,completed_date" }
+      );
+    if (error) return { success: false, error: error.message };
+  } else {
+    const { error } = await supabase
+      .from("daily_task_completions")
+      .delete()
+      .eq("daily_task_id", input.task_id)
+      .eq("completed_date", today);
+    if (error) return { success: false, error: error.message };
+  }
+
+  return {
+    success: true,
+    data: { task_id: input.task_id, completed: input.completed },
+  };
+}
+
+async function removeDailyNonNegotiable(input: {
+  task_id: string;
+}): Promise<ToolResult> {
+  const { error, count } = await supabase
+    .from("daily_tasks")
+    .delete({ count: "exact" })
+    .eq("id", input.task_id);
+
+  if (error) return { success: false, error: error.message };
+  if (count === 0) return { success: false, error: "Daily task not found" };
+  return { success: true, data: { deleted: input.task_id } };
+}
+
 // --- Main Router ---
 
 export async function executeTool(
@@ -729,6 +834,20 @@ export async function executeTool(
     case "format_content_for_platforms":
       return formatContentForPlatforms(
         toolInput as Parameters<typeof formatContentForPlatforms>[0]
+      );
+    case "get_daily_non_negotiables":
+      return getDailyNonNegotiables();
+    case "add_daily_non_negotiable":
+      return addDailyNonNegotiable(
+        toolInput as Parameters<typeof addDailyNonNegotiable>[0]
+      );
+    case "toggle_daily_non_negotiable":
+      return toggleDailyNonNegotiable(
+        toolInput as Parameters<typeof toggleDailyNonNegotiable>[0]
+      );
+    case "remove_daily_non_negotiable":
+      return removeDailyNonNegotiable(
+        toolInput as Parameters<typeof removeDailyNonNegotiable>[0]
       );
     default:
       return { success: false, error: `Unknown tool: ${toolName}` };

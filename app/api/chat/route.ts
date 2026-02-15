@@ -76,8 +76,38 @@ export async function POST(request: NextRequest) {
       // Tweet queue not available — that's fine
     }
 
+    // 2c. Fetch daily non-negotiables for context
+    let dailyTasks: { id: string; title: string; completed_today: boolean }[] = [];
+    try {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const { data: dtasks } = await supabase
+        .from("daily_tasks")
+        .select("*")
+        .order("sort_order", { ascending: true });
+
+      if (dtasks && dtasks.length > 0) {
+        const ids = dtasks.map((t: { id: string }) => t.id);
+        const { data: completions } = await supabase
+          .from("daily_task_completions")
+          .select("daily_task_id")
+          .eq("completed_date", todayStr)
+          .in("daily_task_id", ids);
+
+        const completedSet = new Set(
+          (completions ?? []).map((c: { daily_task_id: string }) => c.daily_task_id)
+        );
+        dailyTasks = dtasks.map((t: { id: string; title: string }) => ({
+          id: t.id,
+          title: t.title,
+          completed_today: completedSet.has(t.id),
+        }));
+      }
+    } catch {
+      // Daily tasks not available — that's fine
+    }
+
     // 3. Build system prompt with current context
-    const systemPrompt = buildSystemPrompt(todos ?? [], todayEvents, tweets);
+    const systemPrompt = buildSystemPrompt(todos ?? [], todayEvents, tweets, dailyTasks);
 
     // 4. Load last 50 messages from supabase for conversation history
     const { data: messageHistory, error: historyError } = await supabase
